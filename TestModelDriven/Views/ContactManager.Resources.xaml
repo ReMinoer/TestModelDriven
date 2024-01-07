@@ -1,0 +1,86 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+                    xmlns:viewModels="clr-namespace:TestModelDriven.ViewModels"
+                    xmlns:framework="clr-namespace:TestModelDriven.Framework"
+                    xmlns:undoRedo="clr-namespace:TestModelDriven.Framework.UndoRedo">
+
+    <DataTemplate DataType="{x:Type undoRedo:UndoRedoStackViewModel}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+            <DockPanel VerticalAlignment="Top">
+                <Slider DockPanel.Dock="Left"
+                        Orientation="Vertical"
+                        IsDirectionReversed="True"
+                        IsMoveToPointEnabled="True"
+                        Value="{Binding CurrentIndex, Mode=TwoWay}"
+                        Minimum="0"
+                        Maximum="{Binding Stack.Count}"
+                        IsSnapToTickEnabled="True"
+                        TickFrequency="1" />
+                <ListView ItemsSource="{Binding Stack}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Description}" />
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </DockPanel>
+        </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type viewModels:ContactViewModel}">
+        <StackPanel>
+            <Label>First Name:</Label>
+            <TextBox Text="{Binding FirstName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsUndoEnabled="False" />
+            <Label>Last Name:</Label>
+            <TextBox Text="{Binding LastName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsUndoEnabled="False" />
+        </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type viewModels:ContactManagerViewModel}">
+        <ListView ItemsSource="{Binding Contacts}" SelectedItem="{Binding SelectedContact}">
+            <i:Interaction.Behaviors>
+                <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
+            </i:Interaction.Behaviors>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding DisplayName}">
+                            <i:Interaction.Behaviors>
+                                <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
+                            </i:Interaction.Behaviors>
+                    </TextBlock>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type viewModels:ApplicationViewModel}">
+        <DockPanel>
+            <i:Interaction.Behaviors>
+                <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
+            </i:Interaction.Behaviors>
+            <DockPanel.InputBindings>
+                <KeyBinding Command="{Binding UndoRedoStack.UndoCommand}" Modifiers="Control" Key="Z" />
+                <KeyBinding Command="{Binding UndoRedoStack.RedoCommand}" Modifiers="Control" Key="Y" />
+            </DockPanel.InputBindings>
+            <ToolBar DockPanel.Dock="Top">
+                <Button Command="{Binding UndoRedoStack.UndoCommand}">Undo</Button>
+                <Button Command="{Binding UndoRedoStack.RedoCommand}">Redo</Button>
+                <Separator />
+                <Button Command="{Binding ContactManager.AddCommand}">Add</Button>
+                <Button Command="{Binding ContactManager.RemoveCommand}">Remove</Button>
+            </ToolBar>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <ContentPresenter Grid.Column="0" Content="{Binding ContactManager}" />
+                <ContentPresenter Grid.Column="1" Content="{Binding ContactManager.SelectedContact}" />
+                <ContentPresenter Grid.Column="2" Content="{Binding UndoRedoStack}" />
+            </Grid>
+        </DockPanel>
+    </DataTemplate>
+
+</ResourceDictionary>
