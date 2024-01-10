@@ -1,5 +1,6 @@
 ﻿using System.Windows.Input;
 using TestModelDriven.Framework;
+using TestModelDriven.Framework.UndoRedo;
 using TestModelDriven.Models;
 
 namespace TestModelDriven.ViewModels;
@@ -30,6 +31,7 @@ public class ContactManagerViewModel : ViewModelBase
 
     private void Add()
     {
+        UndoRedoRecorder.Batch("Add new contact");
         Model.Contacts.Add(new Contact
         {
             FirstName = "John",
@@ -39,6 +41,7 @@ public class ContactManagerViewModel : ViewModelBase
 
     private void Remove()
     {
+        UndoRedoRecorder.Batch("Remove selected contact");
         if (SelectedContact is not null)
         {
             Model.Contacts.Remove(SelectedContact.Model);

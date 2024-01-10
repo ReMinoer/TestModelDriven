@@ -4,19 +4,73 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Reflection;
+using System.Windows.Threading;
 
 namespace TestModelDriven.Framework.UndoRedo;
 
-public class UndoRedoRecorder
+public class UndoRedoRecorder : IDisposable
 {
+    private static readonly HashSet<UndoRedoRecorder> AllRecorders = new();
+
     private readonly IUndoRedoStack _undoRedoStack;
+    private UndoRedoBatch? _currentBatch;
+    private static string? _batchDescription;
     private static bool _isObservingStateChange;
+
+    private IUndoRedoStack ActiveStack => _currentBatch ??= CreateBatch();
 
     public IFocuser? Focuser { get; set; }
 
     public UndoRedoRecorder(IUndoRedoStack undoRedoStack)
     {
         _undoRedoStack = undoRedoStack;
+        AllRecorders.Add(this);
+    }
+
+    public void Dispose()
+    {
+        // TODO: Dispose current batch properly
+        AllRecorders.Remove(this);
+    }
+
+    public static void Batch(string description)
+    {
+        _batchDescription = description;
+    }
+
+    private static UndoRedoBatch CreateBatch()
+    {
+        Dispatcher.CurrentDispatcher.BeginInvoke(CloseBatch, DispatcherPriority.SystemIdle);
+        return new UndoRedoBatch();
+    }
+
+    private static void CloseBatch()
+    {
+        foreach (var recorder in AllRecorders)
+        {
+            if (recorder._currentBatch is null)
+                return;
+            
+            if (recorder._currentBatch.Batch.Count == 1)
+            {
+                IUndoRedo uniqueUndoRedo = recorder._currentBatch.Batch[0];
+                if (_batchDescription is not null)
+                    uniqueUndoRedo = uniqueUndoRedo.PostDescription(_batchDescription);
+
+                recorder._undoRedoStack.Push(uniqueUndoRedo);
+            }
+            else
+            {
+                if (_batchDescription is not null)
+                    recorder._currentBatch.Description = _batchDescription;
+
+                recorder._undoRedoStack.Push(recorder._currentBatch);
+            }
+
+            recorder._currentBatch = null;
+        }
+
+        _batchDescription = null;
     }
 
     public void Subscribe(INotifyStateChanged state)
@@ -109,7 +163,7 @@ public class UndoRedoRecorder
             }
         }
 
-        _undoRedoStack.Push(new RecorderUndoRedo($"Set {e.PropertyName} of {sender} to \"{e.NewValue}\"",
+        ActiveStack.Push(new RecorderUndoRedo($"Set {e.PropertyName} of {sender} to \"{e.NewValue}\"",
             () =>
             {
                 if (stateAttribute.Ownership == StateOwnership.Owner)
@@ -169,7 +223,7 @@ public class UndoRedoRecorder
                     }
                 }
 
-                _undoRedoStack.Push(new RecorderUndoRedo($"Add {e.NewItems.Count} item(s) to {sender}",
+                ActiveStack.Push(new RecorderUndoRedo($"Add {e.NewItems.Count} item(s) to {sender}",
                         () =>
                         {
                             for (int i = 0; i < e.NewItems.Count; i++)
@@ -221,7 +275,7 @@ public class UndoRedoRecorder
                     }
                 }
 
-                _undoRedoStack.Push(new RecorderUndoRedo($"Remove {e.OldItems.Count} item(s) from {sender}",
+                ActiveStack.Push(new RecorderUndoRedo($"Remove {e.OldItems.Count} item(s) from {sender}",
                     () =>
                     {
                         for (int i = e.OldItems.Count - 1; i >= 0; i--)

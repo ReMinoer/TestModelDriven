@@ -14,7 +14,7 @@ public class ContactViewModel : ViewModelBase
         get => Model.FirstName;
         set
         {
-            using var _ = UndoRedo.SetDescription($"Set first name to {value}");
+            UndoRedoRecorder.Batch($"Set first name to {value}");
             Model.FirstName = value;
         }
     }
@@ -24,7 +24,7 @@ public class ContactViewModel : ViewModelBase
         get => Model.LastName;
         set
         {
-            using var _ = UndoRedo.SetDescription($"Set last name to {value}");
+            UndoRedoRecorder.Batch($"Set last name to {value}");
             Model.LastName = value;
         }
     }

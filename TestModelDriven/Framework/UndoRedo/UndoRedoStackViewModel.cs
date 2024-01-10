@@ -60,10 +60,8 @@ public class UndoRedoStackViewModel : NotifyPropertyChangedBase, IUndoRedoStack
 
     public void Dispose()
     {
-        for (int i = CurrentIndex; i < _stack.Count; i++)
-        {
-            _stack[i].Dispose();
-        }
+        foreach (var undoRedo in _stack)
+            undoRedo.Dispose();
     }
 
     private void SetCurrentIndex(int newIndex, bool skipUndoRedo = false)

@@ -40,23 +40,4 @@ public class UndoRedo : IUndoRedo
         else
             _undoneDispose?.Invoke();
     }
-
-    public static IDisposable SetDescription(string description)
-    {
-        return new UndoRedoDescriptionScope(description);
-    }
-
-    private class UndoRedoDescriptionScope : IDisposable
-    {
-        public string Description { get; }
-
-        public UndoRedoDescriptionScope(string description)
-        {
-            Description = description;
-        }
-
-        public void Dispose()
-        {
-        }
-    }
 }
