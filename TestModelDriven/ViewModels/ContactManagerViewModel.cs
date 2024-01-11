@@ -41,9 +41,9 @@ public class ContactManagerViewModel : ViewModelBase
 
     private void Remove()
     {
-        UndoRedoRecorder.Batch("Remove selected contact");
         if (SelectedContact is not null)
         {
+            UndoRedoRecorder.Batch($"Remove contact \"{SelectedContact.DisplayName}\"");
             Model.Contacts.Remove(SelectedContact.Model);
         }
     }

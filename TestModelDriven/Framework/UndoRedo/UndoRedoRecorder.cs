@@ -3,34 +3,52 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Reflection;
-using System.Windows.Threading;
+using System.Threading;
 
 namespace TestModelDriven.Framework.UndoRedo;
 
 public class UndoRedoRecorder : IDisposable
 {
-    static private readonly HashSet<UndoRedoRecorder> AllRecorders = new();
-
-    private readonly IUndoRedoStack _undoRedoStack;
-    private UndoRedoBatch? _currentBatch;
     static private string? _batchDescription;
     static private bool _isObservingStateChange;
 
-    private IUndoRedoStack ActiveStack => _currentBatch ??= CreateBatch();
+    private readonly IUndoRedoStack _undoRedoStack;
+    private UndoRedoBatch _currentBatch = new();
+
+    private readonly Subject<UndoRedoBatch?> _batchSubject;
+    private readonly IDisposable _batchSubscription;
+
+    private IUndoRedoStack ActiveStack
+    {
+        get
+        {
+            _batchSubject.OnNext(_currentBatch);
+            return _currentBatch;
+        }
+    }
 
     public IFocuser? Focuser { get; set; }
 
     public UndoRedoRecorder(IUndoRedoStack undoRedoStack)
     {
         _undoRedoStack = undoRedoStack;
-        AllRecorders.Add(this);
+
+        _batchSubject = new Subject<UndoRedoBatch?>();
+        _batchSubscription = _batchSubject
+            .Throttle(TimeSpan.FromMilliseconds(500))
+            .ObserveOn(SynchronizationContext.Current!)
+            .Subscribe(OnBatchFree);
     }
 
     public void Dispose()
     {
+        _batchSubscription.Dispose();
+        _batchSubject.Dispose();
+
         // TODO: Dispose current batch properly
-        AllRecorders.Remove(this);
     }
 
     static public void Batch(string description)
@@ -38,38 +56,28 @@ public class UndoRedoRecorder : IDisposable
         _batchDescription = description;
     }
 
-    static private UndoRedoBatch CreateBatch()
+    private void OnBatchFree(UndoRedoBatch? batch)
     {
-        Dispatcher.CurrentDispatcher.BeginInvoke(CloseBatch, DispatcherPriority.SystemIdle);
-        return new UndoRedoBatch();
-    }
+        if (batch is null)
+            return;
 
-    static private void CloseBatch()
-    {
-        foreach (UndoRedoRecorder recorder in AllRecorders)
+        if (batch.Batch.Count == 1)
         {
-            if (recorder._currentBatch is null)
-                return;
-            
-            if (recorder._currentBatch.Batch.Count == 1)
-            {
-                IUndoRedo uniqueUndoRedo = recorder._currentBatch.Batch[0];
-                if (_batchDescription is not null)
-                    uniqueUndoRedo = uniqueUndoRedo.PostDescription(_batchDescription);
+            IUndoRedo uniqueUndoRedo = batch.Batch[0];
+            if (_batchDescription is not null)
+                uniqueUndoRedo = uniqueUndoRedo.PostDescription(_batchDescription);
 
-                recorder._undoRedoStack.Push(uniqueUndoRedo);
-            }
-            else
-            {
-                if (_batchDescription is not null)
-                    recorder._currentBatch.Description = _batchDescription;
-
-                recorder._undoRedoStack.Push(recorder._currentBatch);
-            }
-
-            recorder._currentBatch = null;
+            _undoRedoStack.Push(uniqueUndoRedo);
         }
+        else
+        {
+            if (_batchDescription is not null)
+                batch.Description = _batchDescription;
 
+            _undoRedoStack.Push(batch);
+        }
+        
+        _currentBatch = new UndoRedoBatch();
         _batchDescription = null;
     }
 
