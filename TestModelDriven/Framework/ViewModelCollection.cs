@@ -58,7 +58,7 @@ public class ViewModelCollection<TModel, TViewModel> : IReadOnlyList<TViewModel>
             case NotifyCollectionChangedAction.Add:
                 for (int i = 0; i < e.NewItems!.Count; i++)
                 {
-                    TModel newModelItem = (TModel)e.NewItems[i];
+                    var newModelItem = (TModel)e.NewItems[i];
                     TViewModel newViewModelItem = _viewModelFactory(newModelItem);
                     _list.Insert(e.NewStartingIndex + i, newViewModelItem);
                 }
@@ -66,7 +66,7 @@ public class ViewModelCollection<TModel, TViewModel> : IReadOnlyList<TViewModel>
             case NotifyCollectionChangedAction.Remove:
                 for (int i = 0; i < e.OldItems!.Count; i++)
                 {
-                    TModel oldModelItem = (TModel)e.OldItems[i];
+                    var oldModelItem = (TModel)e.OldItems[i];
                     TViewModel oldViewModelItem = this.First(x => Equals(_modelGetter(x), oldModelItem));
                     _list.Remove(oldViewModelItem);
                 }

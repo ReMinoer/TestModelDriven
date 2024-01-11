@@ -33,7 +33,7 @@ public class UndoRedoBatch : IUndoRedoStack, IUndoRedo
 
     public void Redo()
     {
-        foreach (var undoRedo in _batch)
+        foreach (IUndoRedo undoRedo in _batch)
             undoRedo.Redo();
 
         IsDone = true;
@@ -41,7 +41,7 @@ public class UndoRedoBatch : IUndoRedoStack, IUndoRedo
 
     public void Undo()
     {
-        foreach (var undoRedo in _batch.Reverse<IUndoRedo>())
+        foreach (IUndoRedo undoRedo in _batch.Reverse<IUndoRedo>())
             undoRedo.Undo();
 
         IsDone = false;
@@ -49,7 +49,7 @@ public class UndoRedoBatch : IUndoRedoStack, IUndoRedo
 
     public void Dispose()
     {
-        foreach (var undoRedo in _batch)
+        foreach (IUndoRedo undoRedo in _batch)
             undoRedo.Dispose();
     }
 }

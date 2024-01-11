@@ -10,12 +10,12 @@ namespace TestModelDriven.Framework.UndoRedo;
 
 public class UndoRedoRecorder : IDisposable
 {
-    private static readonly HashSet<UndoRedoRecorder> AllRecorders = new();
+    static private readonly HashSet<UndoRedoRecorder> AllRecorders = new();
 
     private readonly IUndoRedoStack _undoRedoStack;
     private UndoRedoBatch? _currentBatch;
-    private static string? _batchDescription;
-    private static bool _isObservingStateChange;
+    static private string? _batchDescription;
+    static private bool _isObservingStateChange;
 
     private IUndoRedoStack ActiveStack => _currentBatch ??= CreateBatch();
 
@@ -33,20 +33,20 @@ public class UndoRedoRecorder : IDisposable
         AllRecorders.Remove(this);
     }
 
-    public static void Batch(string description)
+    static public void Batch(string description)
     {
         _batchDescription = description;
     }
 
-    private static UndoRedoBatch CreateBatch()
+    static private UndoRedoBatch CreateBatch()
     {
         Dispatcher.CurrentDispatcher.BeginInvoke(CloseBatch, DispatcherPriority.SystemIdle);
         return new UndoRedoBatch();
     }
 
-    private static void CloseBatch()
+    static private void CloseBatch()
     {
-        foreach (var recorder in AllRecorders)
+        foreach (UndoRedoRecorder recorder in AllRecorders)
         {
             if (recorder._currentBatch is null)
                 return;
@@ -79,7 +79,7 @@ public class UndoRedoRecorder : IDisposable
 
         foreach (PropertyInfo statePropertyInfo in GetStateProperties(state.GetType()))
         {
-            var value = statePropertyInfo.GetValue(state);
+            object? value = statePropertyInfo.GetValue(state);
 
             if (value is INotifyStateChanged subState)
             {
@@ -105,7 +105,7 @@ public class UndoRedoRecorder : IDisposable
     {
         foreach (PropertyInfo statePropertyInfo in GetStateProperties(state.GetType()))
         {
-            var value = statePropertyInfo.GetValue(state);
+            object? value = statePropertyInfo.GetValue(state);
 
             if (value is INotifyStateChanged subState)
             {
@@ -129,7 +129,7 @@ public class UndoRedoRecorder : IDisposable
         state.StateChanged -= OnStateChanged;
     }
 
-    private static IEnumerable<PropertyInfo> GetStateProperties(Type type)
+    static private IEnumerable<PropertyInfo> GetStateProperties(Type type)
     {
         return type.GetProperties().Where(x => x.GetCustomAttribute<StateAttribute>() is not null);
     }
@@ -242,7 +242,7 @@ public class UndoRedoRecorder : IDisposable
                         {
                             for (int i = e.NewItems.Count - 1; i >= 0; i--)
                             {
-                                var item = list[e.NewStartingIndex + i];
+                                object? item = list[e.NewStartingIndex + i];
 
                                 list.RemoveAt(e.NewStartingIndex + i);
 

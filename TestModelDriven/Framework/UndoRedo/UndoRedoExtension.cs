@@ -1,8 +1,8 @@
 ﻿namespace TestModelDriven.Framework.UndoRedo;
 
-public static class UndoRedoExtension
+static public class UndoRedoExtension
 {
-    public static IUndoRedo PostDescription(this IUndoRedo undoRedo, string description)
+    static public IUndoRedo PostDescription(this IUndoRedo undoRedo, string description)
     {
         return new PostDescriptionUndoRedo(undoRedo, description);
     }

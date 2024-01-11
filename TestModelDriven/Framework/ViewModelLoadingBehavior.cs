@@ -5,7 +5,7 @@ namespace TestModelDriven.Framework;
 
 public class ViewModelLoadingBehavior : Behavior<FrameworkElement>
 {
-    public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
+    static public readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
         nameof(ViewModel), typeof(ViewModelBase), typeof(ViewModelLoadingBehavior), new PropertyMetadata(null));
 
     public ViewModelBase ViewModel
