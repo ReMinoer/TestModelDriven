@@ -11,7 +11,7 @@ public class UndoRedoTemplateSelector : DataTemplateSelector
         if (container is not FrameworkElement element)
             return null;
 
-        if (item is UndoRedoBatch)
+        if (item is IUndoRedoBatch)
             return element.FindResource("UndoRedoBatchTemplate") as DataTemplate;
         
         return element.FindResource("UndoRedoTemplate") as DataTemplate;

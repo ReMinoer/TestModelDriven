@@ -13,12 +13,13 @@ namespace TestModelDriven.Framework.UndoRedo;
 public class UndoRedoRecorder : IDisposable
 {
     static private string? _batchDescription;
+    static private bool _needNewBatch;
     static private bool _isObservingStateChange;
 
     private readonly IUndoRedoStack _undoRedoStack;
-    private UndoRedoBatch _currentBatch = new();
+    private UndoRedoRecorderBatch _currentBatch = new();
 
-    private readonly Subject<UndoRedoBatch?> _batchSubject;
+    private readonly Subject<UndoRedoRecorderBatch?> _batchSubject;
     private readonly IDisposable _batchSubscription;
 
     private IUndoRedoStack ActiveStack
@@ -36,7 +37,7 @@ public class UndoRedoRecorder : IDisposable
     {
         _undoRedoStack = undoRedoStack;
 
-        _batchSubject = new Subject<UndoRedoBatch?>();
+        _batchSubject = new Subject<UndoRedoRecorderBatch?>();
         _batchSubscription = _batchSubject
             .Throttle(TimeSpan.FromMilliseconds(500))
             .ObserveOn(SynchronizationContext.Current!)
@@ -54,6 +55,7 @@ public class UndoRedoRecorder : IDisposable
     static public void Batch(string description)
     {
         _batchDescription = description;
+        _needNewBatch = true;
     }
 
     private void OnBatchFree(UndoRedoBatch? batch)
@@ -71,14 +73,29 @@ public class UndoRedoRecorder : IDisposable
         }
         else
         {
-            if (_batchDescription is not null)
-                batch.Description = _batchDescription;
-
             _undoRedoStack.Push(batch);
         }
         
-        _currentBatch = new UndoRedoBatch();
+        _currentBatch = new UndoRedoRecorderBatch();
         _batchDescription = null;
+    }
+
+    private class UndoRedoRecorderBatch : UndoRedoBatch
+    {
+        private UndoRedoBatch? _currentSubBatch;
+
+        public override void Push(IUndoRedo undoRedo)
+        {
+            if (_currentSubBatch is null || _needNewBatch)
+            {
+                _currentSubBatch = new UndoRedoBatch(_batchDescription);
+                base.Push(_currentSubBatch);
+
+                _needNewBatch = false;
+            }
+
+            _currentSubBatch.Push(undoRedo);
+        }
     }
 
     public void Subscribe(INotifyStateChanged state)

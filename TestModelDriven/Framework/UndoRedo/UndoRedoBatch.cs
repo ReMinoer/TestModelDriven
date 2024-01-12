@@ -1,13 +1,12 @@
 ﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 
 namespace TestModelDriven.Framework.UndoRedo;
 
-public class UndoRedoBatch : IUndoRedoStack, IUndoRedo
+public class UndoRedoBatch : IUndoRedoBatch
 {
     private readonly List<IUndoRedo> _batch;
-    public ReadOnlyCollection<IUndoRedo> Batch { get; }
+    public IReadOnlyList<IUndoRedo> Batch { get; }
 
     private string? _description;
     public string Description
@@ -26,12 +25,12 @@ public class UndoRedoBatch : IUndoRedoStack, IUndoRedo
         Batch = _batch.AsReadOnly();
     }
 
-    public void Push(IUndoRedo undoRedo)
+    public virtual void Push(IUndoRedo undoRedo)
     {
         _batch.Add(undoRedo);
     }
 
-    public void Redo()
+    public virtual void Redo()
     {
         foreach (IUndoRedo undoRedo in _batch)
             undoRedo.Redo();
@@ -39,7 +38,7 @@ public class UndoRedoBatch : IUndoRedoStack, IUndoRedo
         IsDone = true;
     }
 
-    public void Undo()
+    public virtual void Undo()
     {
         foreach (IUndoRedo undoRedo in _batch.Reverse<IUndoRedo>())
             undoRedo.Undo();
@@ -47,7 +46,7 @@ public class UndoRedoBatch : IUndoRedoStack, IUndoRedo
         IsDone = false;
     }
 
-    public void Dispose()
+    public virtual void Dispose()
     {
         foreach (IUndoRedo undoRedo in _batch)
             undoRedo.Dispose();

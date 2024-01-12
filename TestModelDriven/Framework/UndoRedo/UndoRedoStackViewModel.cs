@@ -47,6 +47,7 @@ public class UndoRedoStackViewModel : NotifyPropertyChangedBase, IUndoRedoStack
         if (!CanUndo)
             return;
 
+        // TODO: Wait for current batch before undo
         SetCurrentIndex(CurrentIndex - 1);
     }
 
@@ -55,6 +56,7 @@ public class UndoRedoStackViewModel : NotifyPropertyChangedBase, IUndoRedoStack
         if (!CanRedo)
             return;
 
+        // TODO: Wait for current batch before redo
         SetCurrentIndex(CurrentIndex + 1);
     }
 

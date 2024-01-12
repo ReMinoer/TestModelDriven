@@ -12,7 +12,7 @@
         <TextBlock Text="{Binding Description}" />
     </DataTemplate>
 
-    <HierarchicalDataTemplate x:Key="UndoRedoBatchTemplate" DataType="{x:Type undoRedo:UndoRedoBatch}" ItemsSource="{Binding Batch}">
+    <HierarchicalDataTemplate x:Key="UndoRedoBatchTemplate" DataType="{x:Type undoRedo:IUndoRedoBatch}" ItemsSource="{Binding Batch}">
         <TextBlock Text="{Binding Description}" />
     </HierarchicalDataTemplate>
 

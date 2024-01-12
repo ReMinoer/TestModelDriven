@@ -1,14 +1,11 @@
-﻿using System.ComponentModel;
-using TestModelDriven.Framework;
+﻿using TestModelDriven.Framework;
 using TestModelDriven.Framework.UndoRedo;
 using TestModelDriven.Models;
 
 namespace TestModelDriven.ViewModels;
 
-public class ContactViewModel : ViewModelBase
+public class ContactViewModel : OneForOneViewModel<Contact>
 {
-    public Contact Model { get; }
-
     public string FirstName
     {
         get => Model.FirstName;
@@ -29,28 +26,20 @@ public class ContactViewModel : ViewModelBase
         }
     }
 
-    public string DisplayName => $"{Model.FirstName} {Model.LastName}";
+    public string DisplayName => !string.IsNullOrWhiteSpace(Model.FirstName) || !string.IsNullOrWhiteSpace(Model.LastName)
+        ? $"{Model.FirstName} {Model.LastName}"
+        : "*Anonymous*";
 
     public ContactViewModel(Contact model)
+        : base(model)
     {
-        Model = model;
     }
 
-    public override void OnLoaded()
+    protected override void OnModelPropertyChanged(string? propertyName)
     {
-        base.OnLoaded();
-        Model.PropertyChanged += OnPropertyChanged;
-    }
+        base.OnModelPropertyChanged(propertyName);
 
-    public override void OnUnloaded()
-    {
-        Model.PropertyChanged -= OnPropertyChanged;
-        base.OnUnloaded();
-    }
-
-    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        switch (e.PropertyName)
+        switch (propertyName)
         {
             case nameof(Contact.FirstName):
                 RaisePropertyChanged(nameof(FirstName));

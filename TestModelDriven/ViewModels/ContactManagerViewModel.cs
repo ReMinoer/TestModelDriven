@@ -5,9 +5,8 @@ using TestModelDriven.Models;
 
 namespace TestModelDriven.ViewModels;
 
-public class ContactManagerViewModel : ViewModelBase
+public class ContactManagerViewModel : OneForOneViewModel<ContactManager>
 {
-    public ContactManager Model { get; }
     public ViewModelCollection<Contact, ContactViewModel> Contacts { get; }
 
     private ContactViewModel? _selectedContact;
@@ -21,8 +20,8 @@ public class ContactManagerViewModel : ViewModelBase
     public ICommand RemoveCommand { get; }
 
     public ContactManagerViewModel(ContactManager model)
+        : base(model)
     {
-        Model = model;
         Contacts = new ViewModelCollection<Contact, ContactViewModel>(Model.Contacts, x => new ContactViewModel(x), x => x.Model);
 
         AddCommand = new Command(_ => Add());
@@ -32,19 +31,18 @@ public class ContactManagerViewModel : ViewModelBase
     private void Add()
     {
         UndoRedoRecorder.Batch("Add new contact");
-        Model.Contacts.Add(new Contact
-        {
-            FirstName = "John",
-            LastName = "Doe"
-        });
+        Model.Contacts.Add(new Contact());
     }
 
     private void Remove()
     {
-        if (SelectedContact is not null)
-        {
-            UndoRedoRecorder.Batch($"Remove contact \"{SelectedContact.DisplayName}\"");
-            Model.Contacts.Remove(SelectedContact.Model);
-        }
+        ContactViewModel? selectedContact = SelectedContact;
+        if (selectedContact is null)
+            return;
+
+        SelectedContact = null;
+
+        UndoRedoRecorder.Batch($"Remove contact \"{selectedContact.DisplayName}\"");
+        Model.Contacts.Remove(selectedContact.Model);
     }
 }
