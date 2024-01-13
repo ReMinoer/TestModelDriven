@@ -1,11 +1,12 @@
-﻿using System.Windows.Input;
+﻿using System.Linq;
+using System.Windows.Input;
 using TestModelDriven.Framework;
 using TestModelDriven.Framework.UndoRedo;
 using TestModelDriven.Models;
 
 namespace TestModelDriven.ViewModels;
 
-public class ContactManagerViewModel : OneForOneViewModel<ContactManager>
+public class ContactManagerViewModel : OneForOneViewModel<ContactManager>, IPresenter
 {
     public ViewModelCollection<Contact, ContactViewModel> Contacts { get; }
 
@@ -44,5 +45,16 @@ public class ContactManagerViewModel : OneForOneViewModel<ContactManager>
 
         UndoRedoRecorder.Batch($"Remove contact \"{selectedContact.DisplayName}\"");
         Model.Contacts.Remove(selectedContact.Model);
+    }
+
+    public void Present(PresenterSubject subject)
+    {
+        if (subject.Model is not Contact contact)
+            return;
+
+        ContactViewModel contactViewModel = Contacts.First(x => x.Model == contact);
+
+        SelectedContact = contactViewModel;
+        contactViewModel.Present(subject);
     }
 }

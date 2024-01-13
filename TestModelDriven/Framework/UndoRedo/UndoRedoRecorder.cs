@@ -31,7 +31,7 @@ public class UndoRedoRecorder : IDisposable
         }
     }
 
-    public IFocuser? Focuser { get; set; }
+    public IPresenter? Presenter { get; set; }
 
     public UndoRedoRecorder(IUndoRedoStack undoRedoStack)
     {
@@ -199,7 +199,7 @@ public class UndoRedoRecorder : IDisposable
                 if (stateAttribute.Ownership == StateOwnership.Owner)
                     (e.OldValue as IRestorable)?.Store();
 
-                Focuser?.Focus(sender, e.PropertyName);
+                Presenter?.Present(new PresenterSubject(sender, e.PropertyName));
             },
             () =>
             {
@@ -211,7 +211,7 @@ public class UndoRedoRecorder : IDisposable
                 if (stateAttribute.Ownership == StateOwnership.Owner)
                     (e.NewValue as IRestorable)?.Store();
 
-                Focuser?.Focus(sender, e.PropertyName);
+                Presenter?.Present(new PresenterSubject(sender, e.PropertyName));
             },
             doneDispose: () =>
             {
@@ -260,7 +260,7 @@ public class UndoRedoRecorder : IDisposable
 
                                 list.Insert(e.NewStartingIndex + i, item);
 
-                                Focuser?.Focus(item);
+                                Presenter?.Present(new PresenterSubject(item));
                             }
                         },
                         () =>
@@ -274,7 +274,7 @@ public class UndoRedoRecorder : IDisposable
                                 //if (stateAttribute.Ownership == StateOwnership.Owner)
                                     (item as IRestorable)?.Store();
 
-                                Focuser?.Focus(sender);
+                                    Presenter?.Present(new PresenterSubject(item));
                             }
                         },
                         undoneDispose: () =>
@@ -312,7 +312,7 @@ public class UndoRedoRecorder : IDisposable
                             //if (stateAttribute.Ownership == StateOwnership.Owner)
                                 (item as IRestorable)?.Store();
 
-                            Focuser?.Focus(sender);
+                                Presenter?.Present(new PresenterSubject(item));
                         }
                     },
                     () =>
@@ -326,7 +326,7 @@ public class UndoRedoRecorder : IDisposable
 
                             list.Insert(e.OldStartingIndex + i, item);
 
-                            Focuser?.Focus(item);
+                            Presenter?.Present(new PresenterSubject(item));
                         }
                     },
                     doneDispose: () =>

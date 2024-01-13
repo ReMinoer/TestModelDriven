@@ -4,7 +4,7 @@ using TestModelDriven.Models;
 
 namespace TestModelDriven.ViewModels;
 
-public class ContactViewModel : OneForOneViewModel<Contact>
+public class ContactViewModel : OneForOneViewModel<Contact>, IPresenter
 {
     public string FirstName
     {
@@ -48,6 +48,22 @@ public class ContactViewModel : OneForOneViewModel<Contact>
             case nameof(Contact.LastName):
                 RaisePropertyChanged(nameof(LastName));
                 RaisePropertyChanged(nameof(DisplayName));
+                break;
+        }
+    }
+    
+    public void Present(PresenterSubject subject)
+    {
+        if (subject.Model != this)
+            return;
+
+        switch (subject.PropertyName)
+        {
+            case nameof(Contact.FirstName):
+                //contactViewModel.IsFirstNameFocused = true;
+                break;
+            case nameof(Contact.LastName):
+                //contactViewModel.IsLastNameFocused = true;
                 break;
         }
     }

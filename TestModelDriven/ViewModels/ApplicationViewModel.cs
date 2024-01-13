@@ -1,11 +1,10 @@
-﻿using System.Linq;
-using TestModelDriven.Framework;
+﻿using TestModelDriven.Framework;
 using TestModelDriven.Framework.UndoRedo;
 using TestModelDriven.Models;
 
 namespace TestModelDriven.ViewModels;
 
-public class ApplicationViewModel : ViewModelBase, IFocuser
+public class ApplicationViewModel : ViewModelBase, IPresenter
 {
     public UndoRedoStackViewModel UndoRedoStack { get; }
     public UndoRedoRecorder UndoRedoRecorder { get; }
@@ -19,30 +18,14 @@ public class ApplicationViewModel : ViewModelBase, IFocuser
         UndoRedoStack = new UndoRedoStackViewModel();
         UndoRedoRecorder = new UndoRedoRecorder(UndoRedoStack)
         {
-            Focuser = this
+            Presenter = this
         };
 
         UndoRedoRecorder.Subscribe(ContactManager.Model);
     }
 
-    public void Focus(object? model, string? propertyName = null)
+    public void Present(PresenterSubject subject)
     {
-        switch (model)
-        {
-            case Contact contact:
-                var contactViewModel = ContactManager.Contacts.First(x => x.Model == contact);
-                ContactManager.SelectedContact = contactViewModel;
-
-                switch (propertyName)
-                {
-                    case nameof(Contact.FirstName):
-                        //contactViewModel.IsFirstNameFocused = true;
-                        break;
-                    case nameof(Contact.LastName):
-                        //contactViewModel.IsLastNameFocused = true;
-                        break;
-                }
-                break;
-        }
+        ContactManager.Present(subject);
     }
 }
