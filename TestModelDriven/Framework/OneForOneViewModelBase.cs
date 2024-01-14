@@ -2,12 +2,12 @@
 
 namespace TestModelDriven.Framework;
 
-public class OneForOneViewModel<TModel> : ViewModelBase
+public class OneForOneViewModelBase<TModel> : ViewModelBase
     where TModel : INotifyPropertyChanged
 {
     public TModel Model { get; }
 
-    public OneForOneViewModel(TModel model)
+    public OneForOneViewModelBase(TModel model)
     {
         Model = model;
     }

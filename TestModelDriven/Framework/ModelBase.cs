@@ -2,7 +2,7 @@
 
 namespace TestModelDriven.Framework;
 
-public class ModelBase : NotifyPropertyChangedBase, INotifyStateChanged
+public abstract class ModelBase : NotifyPropertyChangedBase, INotifyStateChanged
 {
     public event StateChangedPropertyHandler? StateChanged;
 

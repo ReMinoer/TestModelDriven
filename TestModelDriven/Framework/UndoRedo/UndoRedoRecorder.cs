@@ -274,7 +274,7 @@ public class UndoRedoRecorder : IDisposable
                                 //if (stateAttribute.Ownership == StateOwnership.Owner)
                                     (item as IRestorable)?.Store();
 
-                                    Presenter?.Present(new PresenterSubject(item));
+                                Presenter?.Present(new PresenterSubject(item));
                             }
                         },
                         undoneDispose: () =>
@@ -312,7 +312,7 @@ public class UndoRedoRecorder : IDisposable
                             //if (stateAttribute.Ownership == StateOwnership.Owner)
                                 (item as IRestorable)?.Store();
 
-                                Presenter?.Present(new PresenterSubject(item));
+                            Presenter?.Present(new PresenterSubject(item));
                         }
                     },
                     () =>

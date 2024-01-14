@@ -4,7 +4,7 @@ using TestModelDriven.Models;
 
 namespace TestModelDriven.ViewModels;
 
-public class ContactViewModel : OneForOneViewModel<Contact>, IPresenter
+public class ContactViewModel : OneForOneViewModelBase<Contact>, IPresenter
 {
     public string FirstName
     {

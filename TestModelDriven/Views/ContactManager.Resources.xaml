@@ -44,20 +44,29 @@
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type viewModels:ContactManagerViewModel}">
-        <ListView ItemsSource="{Binding Contacts}" SelectedItem="{Binding SelectedContact}">
-            <i:Interaction.Behaviors>
-                <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
-            </i:Interaction.Behaviors>
-            <ListView.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding DisplayName}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <ListView ItemsSource="{Binding Contacts}" SelectedItem="{Binding SelectedContact}">
+                <i:Interaction.Behaviors>
+                    <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
+                </i:Interaction.Behaviors>
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding DisplayName}">
                             <i:Interaction.Behaviors>
                                 <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
                             </i:Interaction.Behaviors>
-                    </TextBlock>
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+                        </TextBlock>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <ContentPresenter Grid.Column="1" Content="{Binding SelectedContact}" />
+            <ContentPresenter Grid.Column="2" Content="{Binding UndoRedoStack}" />
+        </Grid>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type viewModels:ApplicationViewModel}">
@@ -66,26 +75,39 @@
                 <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
             </i:Interaction.Behaviors>
             <DockPanel.InputBindings>
-                <KeyBinding Command="{Binding UndoRedoStack.UndoCommand}" Modifiers="Control" Key="Z" />
-                <KeyBinding Command="{Binding UndoRedoStack.RedoCommand}" Modifiers="Control" Key="Y" />
+                <KeyBinding Command="{Binding SelectedContactManager.UndoRedoStack.UndoCommand, FallbackValue={x:Null}}" Modifiers="Control" Key="Z" />
+                <KeyBinding Command="{Binding SelectedContactManager.UndoRedoStack.RedoCommand, FallbackValue={x:Null}}" Modifiers="Control" Key="Y" />
             </DockPanel.InputBindings>
             <ToolBar DockPanel.Dock="Top">
-                <Button Command="{Binding UndoRedoStack.UndoCommand}">Undo</Button>
-                <Button Command="{Binding UndoRedoStack.RedoCommand}">Redo</Button>
+                <Button Command="{Binding NewCommand}">New</Button>
+                <Button Command="{Binding OpenCommand}">Open...</Button>
+                <Button Command="{Binding SaveCommand}">Save</Button>
+                <Button Command="{Binding SaveAsCommand}">Save As...</Button>
                 <Separator />
-                <Button Command="{Binding ContactManager.AddCommand}">Add</Button>
-                <Button Command="{Binding ContactManager.RemoveCommand}">Remove</Button>
+                <Button Command="{Binding SelectedContactManager.UndoRedoStack.UndoCommand, FallbackValue={x:Null}}">Undo</Button>
+                <Button Command="{Binding SelectedContactManager.UndoRedoStack.RedoCommand, FallbackValue={x:Null}}">Redo</Button>
+                <Separator />
+                <Button Command="{Binding SelectedContactManager.AddCommand, FallbackValue={x:Null}}">Add</Button>
+                <Button Command="{Binding SelectedContactManager.RemoveCommand, FallbackValue={x:Null}}">Remove</Button>
             </ToolBar>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition />
-                    <ColumnDefinition />
-                    <ColumnDefinition />
-                </Grid.ColumnDefinitions>
-                <ContentPresenter Grid.Column="0" Content="{Binding ContactManager}" />
-                <ContentPresenter Grid.Column="1" Content="{Binding ContactManager.SelectedContact}" />
-                <ContentPresenter Grid.Column="2" Content="{Binding UndoRedoStack}" />
-            </Grid>
+            <TabControl x:Name="Tabs" ItemsSource="{Binding ContactManagers}" SelectedItem="{Binding SelectedContactManager}">
+                <TabControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Header}" VerticalAlignment="Center" Margin="0 0 5 0" />
+                            <Button Command="{Binding DataContext.CloseCommand, ElementName=Tabs}"
+                                    CommandParameter="{Binding}"
+                                    Content="X"
+                                    Style="{DynamicResource {x:Static ToolBar.ButtonStyleKey}}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </TabControl.ItemTemplate>
+                <TabControl.ContentTemplate>
+                    <DataTemplate>
+                        <ContentPresenter Content="{Binding}" />
+                    </DataTemplate>
+                </TabControl.ContentTemplate>
+            </TabControl>
         </DockPanel>
     </DataTemplate>
 

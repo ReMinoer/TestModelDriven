@@ -1,8 +1,9 @@
-﻿using TestModelDriven.Framework;
+﻿using TestModelDriven.Data;
+using TestModelDriven.Framework;
 
 namespace TestModelDriven.Models;
 
-public class Contact : ModelBase
+public class Contact : PersistentModelBase<ContactData>
 {
     private string _firstName = string.Empty;
     [State]
@@ -19,4 +20,10 @@ public class Contact : ModelBase
         get => _lastName;
         set => Set(ref _lastName, value);
     }
+
+    public override ContactData ToData() => new ContactData
+    {
+        FirstName = FirstName,
+        LastName = LastName
+    };
 }
