@@ -42,7 +42,7 @@ public class ApplicationViewModel : ViewModelBase, IPresenter
         NewCommand = new Command(_ => New());
         OpenCommand = new Command(_ => Open());
         SaveCommand = new Command(_ => CanSave(), _ => Save());
-        SaveAsCommand = new Command(_ => CanSave(), _ => SaveAs());
+        SaveAsCommand = new Command(_ => CanSaveAs(), _ => SaveAs());
         CloseCommand = new Command(Close);
     }
 
@@ -81,11 +81,10 @@ public class ApplicationViewModel : ViewModelBase, IPresenter
         SelectedContactManager = contactManagerViewModel;
     }
 
-    private bool CanSave() => SelectedContactManager is not null;
-    private void SaveAs() => Save(saveAs: true);
+    private bool CanSave() => SelectedContactManager?.UndoRedoStack.IsDirty ?? false;
     private void Save(bool saveAs = false)
     {
-        if (SelectedContactManager is null)
+        if (SelectedContactManager is null || !CanSave())
             return;
 
         if (saveAs || SelectedContactManager.FilePath is null)
@@ -108,7 +107,12 @@ public class ApplicationViewModel : ViewModelBase, IPresenter
         xmlTextWriter.Formatting = Formatting.Indented;
 
         _serializer.WriteObject(xmlTextWriter, SelectedContactManager.Model.ToData());
+
+        SelectedContactManager.UndoRedoStack.SaveCurrentIndex();
     }
+
+    private bool CanSaveAs() => SelectedContactManager is not null;
+    private void SaveAs() => Save(saveAs: true);
 
     private void Close(object? tabViewModel)
     {

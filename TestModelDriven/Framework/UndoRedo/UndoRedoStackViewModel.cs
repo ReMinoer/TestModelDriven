@@ -66,7 +66,7 @@ public class UndoRedoStackViewModel : NotifyPropertyChangedBase, IUndoRedoStack
             undoRedo.Dispose();
     }
 
-    private void SetCurrentIndex(int newIndex, bool skipUndoRedo = false)
+    protected virtual void SetCurrentIndex(int newIndex, bool skipUndoRedo = false)
     {
         if (newIndex == _currentIndex)
             return;

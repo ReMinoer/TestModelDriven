@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Linq;
 using System.Windows.Input;
 using TestModelDriven.Framework;
@@ -9,7 +10,7 @@ namespace TestModelDriven.ViewModels;
 
 public class ContactManagerViewModel : OneForOneViewModelBase<ContactManager>, IPresenter
 {
-    public UndoRedoStackViewModel UndoRedoStack { get; }
+    public DirtyUndoRedoStackViewModel UndoRedoStack { get; }
     public UndoRedoRecorder UndoRedoRecorder { get; }
     
     private string? _filePath;
@@ -34,11 +35,11 @@ public class ContactManagerViewModel : OneForOneViewModelBase<ContactManager>, I
             if (!Set(ref _fileName, value))
                 return;
 
-            Header = FileName ?? DefaultHeader;
+            RefreshHeader();
         }
     }
 
-    private const string DefaultHeader = "*New*";
+    private const string DefaultHeader = "New";
     private string _header = DefaultHeader;
     public string Header
     {
@@ -61,7 +62,9 @@ public class ContactManagerViewModel : OneForOneViewModelBase<ContactManager>, I
     public ContactManagerViewModel(ContactManager model)
         : base(model)
     {
-        UndoRedoStack = new UndoRedoStackViewModel();
+        UndoRedoStack = new DirtyUndoRedoStackViewModel();
+        UndoRedoStack.IsDirtyChanged += OnIsDirtyChanged;
+
         UndoRedoRecorder = new UndoRedoRecorder(UndoRedoStack)
         {
             Presenter = this
@@ -73,6 +76,12 @@ public class ContactManagerViewModel : OneForOneViewModelBase<ContactManager>, I
 
         AddCommand = new Command(_ => Add());
         RemoveCommand = new Command(_ => Remove());
+    }
+
+    private void OnIsDirtyChanged(object? sender, EventArgs e) => RefreshHeader();
+    private void RefreshHeader()
+    {
+        Header = $"{FileName ?? DefaultHeader}{(UndoRedoStack.IsDirty ? "*" : "")}";
     }
 
     private void Add()
