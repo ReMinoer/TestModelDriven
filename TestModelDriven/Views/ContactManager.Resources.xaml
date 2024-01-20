@@ -75,8 +75,10 @@
                 <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
             </i:Interaction.Behaviors>
             <DockPanel.InputBindings>
-                <KeyBinding Command="{Binding SelectedContactManager.UndoRedoStack.UndoCommand, FallbackValue={x:Null}}" Modifiers="Control" Key="Z" />
-                <KeyBinding Command="{Binding SelectedContactManager.UndoRedoStack.RedoCommand, FallbackValue={x:Null}}" Modifiers="Control" Key="Y" />
+                <KeyBinding Command="{Binding SelectedContactManager.UndoRedoStack.UndoCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}"
+                            Modifiers="Control" Key="Z" />
+                <KeyBinding Command="{Binding SelectedContactManager.UndoRedoStack.RedoCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}"
+                            Modifiers="Control" Key="Y" />
             </DockPanel.InputBindings>
             <ToolBar DockPanel.Dock="Top">
                 <Button Command="{Binding NewCommand}">New</Button>
@@ -84,11 +86,11 @@
                 <Button Command="{Binding SaveCommand}">Save</Button>
                 <Button Command="{Binding SaveAsCommand}">Save As...</Button>
                 <Separator />
-                <Button Command="{Binding SelectedContactManager.UndoRedoStack.UndoCommand, FallbackValue={x:Null}}">Undo</Button>
-                <Button Command="{Binding SelectedContactManager.UndoRedoStack.RedoCommand, FallbackValue={x:Null}}">Redo</Button>
+                <Button Command="{Binding SelectedContactManager.UndoRedoStack.UndoCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}">Undo</Button>
+                <Button Command="{Binding SelectedContactManager.UndoRedoStack.RedoCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}">Redo</Button>
                 <Separator />
-                <Button Command="{Binding SelectedContactManager.AddCommand, FallbackValue={x:Null}}">Add</Button>
-                <Button Command="{Binding SelectedContactManager.RemoveCommand, FallbackValue={x:Null}}">Remove</Button>
+                <Button Command="{Binding SelectedContactManager.AddCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}">Add</Button>
+                <Button Command="{Binding SelectedContactManager.RemoveCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}">Remove</Button>
             </ToolBar>
             <TabControl x:Name="Tabs" ItemsSource="{Binding ContactManagers}" SelectedItem="{Binding SelectedContactManager}">
                 <TabControl.ItemTemplate>
