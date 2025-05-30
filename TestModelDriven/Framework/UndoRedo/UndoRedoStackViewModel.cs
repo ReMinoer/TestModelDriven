@@ -1,9 +1,10 @@
 ﻿using System.Collections.ObjectModel;
 using System.Windows.Input;
+using TestModelDriven.Framework.Application;
 
 namespace TestModelDriven.Framework.UndoRedo;
 
-public class UndoRedoStackViewModel : NotifyPropertyChangedBase, IUndoRedoStack
+public class UndoRedoStackViewModel : ViewModelBase, IUndoRedoStack
 {
     private readonly ObservableCollection<IUndoRedo> _stack;
     public ReadOnlyObservableCollection<IUndoRedo> Stack { get; }
@@ -29,6 +30,9 @@ public class UndoRedoStackViewModel : NotifyPropertyChangedBase, IUndoRedoStack
         UndoCommand = new Command(_ => CanUndo, _ => Undo());
         RedoCommand = new Command(_ => CanRedo, _ => Redo());
     }
+
+    public override void OnLoaded() {}
+    public override void OnUnloaded() {}
 
     public void Push(IUndoRedo undoRedo)
     {

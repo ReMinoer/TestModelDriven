@@ -43,6 +43,16 @@ public class ViewModelCollection<TModel, TViewModel> : IReadOnlyList<TViewModel>
         _modelList.CollectionChanged += OnModelCollectionChanged;
     }
 
+    public bool HasViewModel(object model)
+    {
+        return _list.Any(x => Equals(_modelGetter(x), model));
+    }
+
+    public TViewModel? GetViewModel(object model)
+    {
+        return _list.FirstOrDefault(x => Equals(_modelGetter(x), model));
+    }
+
     public void Dispose()
     {
         _modelList.CollectionChanged -= OnModelCollectionChanged;

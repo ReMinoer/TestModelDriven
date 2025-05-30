@@ -1,6 +1,12 @@
 ﻿namespace TestModelDriven.Framework;
 
-public interface IData<out TModel>
+public interface IData
 {
-    TModel ToModel();
+    object ToModel();
+}
+
+public interface IData<out TModel> : IData
+    where TModel : notnull
+{
+    new TModel ToModel();
 }

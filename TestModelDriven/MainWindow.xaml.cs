@@ -4,11 +4,11 @@ namespace TestModelDriven
 {
     public partial class MainWindow
     {
-        public ApplicationViewModel Application { get; }
+        public TestApplicationViewModel Application { get; }
 
         public MainWindow()
         {
-            Application = new ApplicationViewModel();
+            Application = new TestApplicationViewModel();
 
             DataContext = this;
             InitializeComponent();

@@ -2,37 +2,12 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
                     xmlns:viewModels="clr-namespace:TestModelDriven.ViewModels"
-                    xmlns:framework="clr-namespace:TestModelDriven.Framework"
-                    xmlns:undoRedo="clr-namespace:TestModelDriven.Framework.UndoRedo"
-                    xmlns:views="clr-namespace:TestModelDriven.Views">
+                    xmlns:framework="clr-namespace:TestModelDriven.Framework">
 
-    <views:UndoRedoTemplateSelector x:Key="UndoRedoTemplateSelector" />
-
-    <DataTemplate x:Key="UndoRedoTemplate" DataType="{x:Type undoRedo:IUndoRedo}">
-        <TextBlock Text="{Binding Description}" />
-    </DataTemplate>
-
-    <HierarchicalDataTemplate x:Key="UndoRedoBatchTemplate" DataType="{x:Type undoRedo:IUndoRedoBatch}" ItemsSource="{Binding Batch}">
-        <TextBlock Text="{Binding Description}" />
-    </HierarchicalDataTemplate>
-
-    <DataTemplate DataType="{x:Type undoRedo:UndoRedoStackViewModel}">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <DockPanel VerticalAlignment="Top">
-                <Slider DockPanel.Dock="Left"
-                        Orientation="Vertical"
-                        IsDirectionReversed="True"
-                        IsMoveToPointEnabled="True"
-                        Value="{Binding CurrentIndex, Mode=TwoWay}"
-                        Minimum="0"
-                        Maximum="{Binding Stack.Count}"
-                        IsSnapToTickEnabled="True"
-                        TickFrequency="1" />
-                <TreeView ItemsSource="{Binding Stack}"
-                          ItemTemplateSelector="{StaticResource UndoRedoTemplateSelector}" />
-            </DockPanel>
-        </ScrollViewer>
-    </DataTemplate>
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../Framework/Application/Application.Resources.xaml" />
+        <ResourceDictionary Source="../Framework/UndoRedo/UndoRedo.Resources.xaml" />
+    </ResourceDictionary.MergedDictionaries>
 
     <DataTemplate DataType="{x:Type viewModels:ContactViewModel}">
         <StackPanel>
@@ -45,15 +20,15 @@
 
     <DataTemplate DataType="{x:Type viewModels:ContactManagerViewModel}">
         <Grid>
+            <i:Interaction.Behaviors>
+                <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
+            </i:Interaction.Behaviors>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition />
                 <ColumnDefinition />
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
-            <ListView ItemsSource="{Binding Contacts}" SelectedItem="{Binding SelectedContact}">
-                <i:Interaction.Behaviors>
-                    <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
-                </i:Interaction.Behaviors>
+            <ListView ItemsSource="{Binding Contacts}" SelectedItem="{Binding SelectedContact, Mode=TwoWay}">
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding DisplayName}">
@@ -67,50 +42,6 @@
             <ContentPresenter Grid.Column="1" Content="{Binding SelectedContact}" />
             <ContentPresenter Grid.Column="2" Content="{Binding UndoRedoStack}" />
         </Grid>
-    </DataTemplate>
-
-    <DataTemplate DataType="{x:Type viewModels:ApplicationViewModel}">
-        <DockPanel>
-            <i:Interaction.Behaviors>
-                <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
-            </i:Interaction.Behaviors>
-            <DockPanel.InputBindings>
-                <KeyBinding Command="{Binding SelectedContactManager.UndoRedoStack.UndoCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}"
-                            Modifiers="Control" Key="Z" />
-                <KeyBinding Command="{Binding SelectedContactManager.UndoRedoStack.RedoCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}"
-                            Modifiers="Control" Key="Y" />
-            </DockPanel.InputBindings>
-            <ToolBar DockPanel.Dock="Top">
-                <Button Command="{Binding NewCommand}">New</Button>
-                <Button Command="{Binding OpenCommand}">Open...</Button>
-                <Button Command="{Binding SaveCommand}">Save</Button>
-                <Button Command="{Binding SaveAsCommand}">Save As...</Button>
-                <Separator />
-                <Button Command="{Binding SelectedContactManager.UndoRedoStack.UndoCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}">Undo</Button>
-                <Button Command="{Binding SelectedContactManager.UndoRedoStack.RedoCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}">Redo</Button>
-                <Separator />
-                <Button Command="{Binding SelectedContactManager.AddCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}">Add</Button>
-                <Button Command="{Binding SelectedContactManager.RemoveCommand, FallbackValue={x:Static framework:DisabledCommand.Instance}}">Remove</Button>
-            </ToolBar>
-            <TabControl x:Name="Tabs" ItemsSource="{Binding ContactManagers}" SelectedItem="{Binding SelectedContactManager}">
-                <TabControl.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding Header}" VerticalAlignment="Center" Margin="0 0 5 0" />
-                            <Button Command="{Binding DataContext.CloseCommand, ElementName=Tabs}"
-                                    CommandParameter="{Binding}"
-                                    Content="X"
-                                    Style="{DynamicResource {x:Static ToolBar.ButtonStyleKey}}"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </TabControl.ItemTemplate>
-                <TabControl.ContentTemplate>
-                    <DataTemplate>
-                        <ContentPresenter Content="{Binding}" />
-                    </DataTemplate>
-                </TabControl.ContentTemplate>
-            </TabControl>
-        </DockPanel>
     </DataTemplate>
 
 </ResourceDictionary>

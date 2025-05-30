@@ -4,11 +4,11 @@ using TestModelDriven.Models;
 
 namespace TestModelDriven.Data;
 
-public class ContactManagerData : IData<ContactManager>
+public class ContactManagerData : DataBase<ContactManager>
 {
     public List<ContactData> Contacts { get; } = new();
 
-    public ContactManager ToModel()
+    public override ContactManager ToModel()
     {
         var model = new ContactManager();
 

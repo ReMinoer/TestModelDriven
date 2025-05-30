@@ -6,6 +6,10 @@ namespace TestModelDriven.ViewModels;
 
 public class ContactViewModel : OneForOneViewModelBase<Contact>, IPresenter
 {
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string _displayName = string.Empty;
+
     public string FirstName
     {
         get => Model.FirstName;
@@ -26,9 +30,7 @@ public class ContactViewModel : OneForOneViewModelBase<Contact>, IPresenter
         }
     }
 
-    public string DisplayName => !string.IsNullOrWhiteSpace(Model.FirstName) || !string.IsNullOrWhiteSpace(Model.LastName)
-        ? $"{Model.FirstName} {Model.LastName}"
-        : "*Anonymous*";
+    public string DisplayName => $"{Model.FirstName} {Model.LastName}".Trim();
 
     public ContactViewModel(Contact model)
         : base(model)
@@ -37,19 +39,22 @@ public class ContactViewModel : OneForOneViewModelBase<Contact>, IPresenter
 
     protected override void OnModelPropertyChanged(string? propertyName)
     {
-        base.OnModelPropertyChanged(propertyName);
-
         switch (propertyName)
         {
             case nameof(Contact.FirstName):
-                RaisePropertyChanged(nameof(FirstName));
-                RaisePropertyChanged(nameof(DisplayName));
+                Set(ref _firstName, Model.FirstName, nameof(FirstName));
+                RefreshDisplayName();
                 break;
             case nameof(Contact.LastName):
-                RaisePropertyChanged(nameof(LastName));
-                RaisePropertyChanged(nameof(DisplayName));
+                Set(ref _lastName, Model.LastName, nameof(LastName));
+                RefreshDisplayName();
                 break;
         }
+    }
+
+    private void RefreshDisplayName()
+    {
+        Set(ref _displayName, $"{Model.FirstName} {Model.LastName}".Trim(), nameof(DisplayName));
     }
     
     public void Present(PresenterSubject subject)

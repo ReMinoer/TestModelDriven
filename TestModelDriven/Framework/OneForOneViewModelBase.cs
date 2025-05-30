@@ -1,27 +1,23 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 
 namespace TestModelDriven.Framework;
 
-public class OneForOneViewModelBase<TModel> : ViewModelBase
+public abstract class OneForOneViewModelBase<TModel> : ViewModelBase, IOneForOneViewModel, IDisposable
     where TModel : INotifyPropertyChanged
 {
     public TModel Model { get; }
+    object IOneForOneViewModel.Model => Model;
 
     public OneForOneViewModelBase(TModel model)
     {
         Model = model;
-    }
-
-    public override void OnLoaded()
-    {
-        base.OnLoaded();
         Model.PropertyChanged += OnPropertyChanged;
     }
 
-    public override void OnUnloaded()
+    public void Dispose()
     {
         Model.PropertyChanged -= OnPropertyChanged;
-        base.OnUnloaded();
     }
 
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -29,5 +25,5 @@ public class OneForOneViewModelBase<TModel> : ViewModelBase
         OnModelPropertyChanged(e.PropertyName);
     }
 
-    protected virtual void OnModelPropertyChanged(string? propertyName) {}
+    protected abstract void OnModelPropertyChanged(string? propertyName);
 }

@@ -6,11 +6,11 @@ namespace TestModelDriven.Framework;
 public class ViewModelLoadingBehavior : Behavior<FrameworkElement>
 {
     static public readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
-        nameof(ViewModel), typeof(ViewModelBase), typeof(ViewModelLoadingBehavior), new PropertyMetadata(null));
+        nameof(ViewModel), typeof(IViewModel), typeof(ViewModelLoadingBehavior), new PropertyMetadata(null));
 
-    public ViewModelBase ViewModel
+    public IViewModel? ViewModel
     {
-        get => (ViewModelBase)GetValue(ViewModelProperty);
+        get => (IViewModel?)GetValue(ViewModelProperty);
         set => SetValue(ViewModelProperty, value);
     }
 
@@ -20,7 +20,7 @@ public class ViewModelLoadingBehavior : Behavior<FrameworkElement>
 
         if (AssociatedObject.IsLoaded)
         {
-            ViewModel.OnLoaded();
+            ViewModel!.OnLoaded();
         }
 
         AssociatedObject.Loaded += OnLoaded;
@@ -35,11 +35,11 @@ public class ViewModelLoadingBehavior : Behavior<FrameworkElement>
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.OnLoaded();
+        ViewModel!.OnLoaded();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.OnUnloaded();
+        ViewModel!.OnUnloaded();
     }
 }

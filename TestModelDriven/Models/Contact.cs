@@ -6,6 +6,8 @@ namespace TestModelDriven.Models;
 public class Contact : PersistentModelBase<ContactData>
 {
     private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+
     [State]
     public string FirstName
     {
@@ -13,7 +15,6 @@ public class Contact : PersistentModelBase<ContactData>
         set => Set(ref _firstName, value);
     }
 
-    private string _lastName = string.Empty;
     [State]
     public string LastName
     {

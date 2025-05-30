@@ -5,6 +5,8 @@ namespace TestModelDriven.Framework.UndoRedo;
 public class DirtyUndoRedoStackViewModel : UndoRedoStackViewModel
 {
     private int _savedIndex;
+    private bool _forceDirty;
+
     public int SavedIndex
     {
         get => _savedIndex;
@@ -20,12 +22,28 @@ public class DirtyUndoRedoStackViewModel : UndoRedoStackViewModel
         }
     }
 
-    public bool IsDirty => CurrentIndex != SavedIndex;
+    public bool IsDirty => _forceDirty || CurrentIndex != SavedIndex;
     public event EventHandler? IsDirtyChanged;
+
+    public void ForceDirty()
+    {
+        bool wasDirty = IsDirty;
+
+        _forceDirty = true;
+
+        if (IsDirty != wasDirty)
+            NotifyIsDirtyChanged();
+    }
 
     public void SaveCurrentIndex()
     {
-        SavedIndex = CurrentIndex;
+        bool wasDirty = IsDirty;
+
+        _forceDirty = false;
+        Set(ref _savedIndex, CurrentIndex);
+
+        if (IsDirty != wasDirty)
+            NotifyIsDirtyChanged();
     }
 
     protected override void SetCurrentIndex(int newIndex, bool skipUndoRedo = false)
