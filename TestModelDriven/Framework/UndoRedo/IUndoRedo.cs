@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework.UndoRedo;
 
-public interface IUndoRedo : IDisposable
+public interface IUndoRedo : IAsyncDisposable
 {
     string Description { get; }
     bool IsDone { get; }
-    void Redo();
-    void Undo();
+    Task RedoAsync();
+    Task UndoAsync();
 }

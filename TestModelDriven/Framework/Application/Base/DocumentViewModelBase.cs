@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Threading.Tasks;
 using TestModelDriven.Framework.UndoRedo;
 
 namespace TestModelDriven.Framework.Application.Base;
@@ -11,36 +11,31 @@ public abstract class DocumentViewModelBase<TModel> : OneForOneViewModelBase<TMo
 
     public DirtyUndoRedoStackViewModel UndoRedoStack { get; }
     public UndoRedoRecorder UndoRedoRecorder { get; }
-    
-    private string _header = string.Empty;
-    public string Header
-    {
-        get => _header;
-        protected set => Set(ref _header, value);
-    }
+    public CommandDispatcherViewModel CommandDispatcher { get; }
 
-    public DocumentViewModelBase(TModel model)
+    private string _header = string.Empty;
+    public string Header => _header;
+    protected Task RefreshHeaderAsync(string value) => SetAsync(ref _header, value, nameof(Header));
+
+    protected DocumentViewModelBase(TModel model)
         : base(model)
     {
         Model = model;
 
-        UndoRedoStack = new DirtyUndoRedoStackViewModel();
-        UndoRedoStack.IsDirtyChanged += OnIsDirtyChanged;
+        var undoRedoStack = new DirtyUndoRedoStack();
+        undoRedoStack.IsDirtyChangedAsync.Subscribe(OnIsDirtyChangedAsync);
 
-        UndoRedoRecorder = new UndoRedoRecorder(UndoRedoStack)
+        UndoRedoStack = new DirtyUndoRedoStackViewModel(undoRedoStack);
+        UndoRedoRecorder = new UndoRedoRecorder(undoRedoStack)
         {
             Presenter = this
         };
 
+        CommandDispatcher = new CommandDispatcherViewModel();
+
         UndoRedoRecorder.Subscribe(Model);
     }
 
-    protected override void OnModelPropertyChanged(string? propertyName)
-    {
-        if (propertyName == nameof(IDocument.Header))
-            Header = Model.Header;
-    }
-
-    protected abstract void OnIsDirtyChanged(object? sender, EventArgs e);
-    public abstract void Present(PresenterSubject subject);
+    protected abstract Task OnIsDirtyChangedAsync();
+    public abstract Task<bool> PresentAsync(PresenterSubject subject);
 }

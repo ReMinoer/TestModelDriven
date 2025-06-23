@@ -1,8 +1,5 @@
-﻿using System.ComponentModel;
+﻿namespace TestModelDriven.Framework.Application;
 
-namespace TestModelDriven.Framework.Application;
-
-public interface IDocument : INotifyStateChanged, INotifyPropertyChanged
+public interface IDocument : IStateChangeNotifier, IPropertyChangeNotifier
 {
-    string Header { get; }
 }

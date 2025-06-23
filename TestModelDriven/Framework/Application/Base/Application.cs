@@ -1,35 +1,33 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework.Application.Base;
 
 public class Application : ModelBase
 {
-    [State]
-    public ObservableCollection<IDocument> Documents { get; }
+    [StateCollection]
+    public AsyncList<IDocument> Documents { get; }
 
     private IDocument? _selectedDocument;
-    public IDocument? SelectedDocument
-    {
-        get => _selectedDocument;
-        set => Set(ref _selectedDocument, value);
-    }
+    [State(nameof(SetSelectedDocumentAsync))]
+    public IDocument? SelectedDocument => _selectedDocument;
+    public Task SetSelectedDocumentAsync(IDocument? value) => SetAsync(ref _selectedDocument, value, nameof(SelectedDocument));
 
     public Application()
     {
-        Documents = new ObservableCollection<IDocument>();
+        Documents = new AsyncList<IDocument>();
     }
 
-    public void AddDocument(IDocument document)
+    public async Task AddDocumentAsync(IDocument document)
     {
-        Documents.Add(document);
-        SelectedDocument = document;
+        await Documents.AddAsync(document);
+        await SetSelectedDocumentAsync(document);
     }
 
-    public void CloseDocument(IDocument document)
+    public async Task CloseDocumentAsync(IDocument document)
     {
         if (SelectedDocument == document)
-            SelectedDocument = null;
+            await SetSelectedDocumentAsync(null);
 
-        Documents.Remove(document);
+        await Documents.RemoveAsync(document);
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace TestModelDriven.Framework.UndoRedo;
+﻿using System.Threading.Tasks;
+
+namespace TestModelDriven.Framework.UndoRedo;
 
 static public class UndoRedoExtension
 {
@@ -20,8 +22,8 @@ static public class UndoRedoExtension
             _undoRedo = undoRedo;
         }
         
-        public void Redo() => _undoRedo.Redo();
-        public void Undo() => _undoRedo.Undo();
-        public void Dispose() => _undoRedo.Dispose();
+        public async Task RedoAsync() => await _undoRedo.RedoAsync().ConfigureAwait(false);
+        public async Task UndoAsync() => await _undoRedo.UndoAsync().ConfigureAwait(false);
+        public async ValueTask DisposeAsync() => await _undoRedo.DisposeAsync().ConfigureAwait(false);
     }
 }

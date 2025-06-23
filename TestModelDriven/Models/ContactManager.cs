@@ -1,5 +1,5 @@
-﻿using System.Collections.ObjectModel;
-using System.Reflection;
+﻿using System.Reflection;
+using System.Threading.Tasks;
 using TestModelDriven.Data;
 using TestModelDriven.Framework;
 using TestModelDriven.Framework.Application;
@@ -17,33 +17,30 @@ public class ContactManager : FileDocumentBase<ContactManagerData>
             new DataContractFormat<ContactManagerData>(Assembly.GetExecutingAssembly().GetTypes()))
     );
 
-    [State]
-    public ObservableCollection<Contact> Contacts { get; } = new();
+    [StateCollection]
+    public AsyncList<Contact> Contacts { get; } = new();
 
     private Contact? _selectedContact;
-    public Contact? SelectedContact
-    {
-        get => _selectedContact;
-        set => Set(ref _selectedContact, value);
-    }
+    public Contact? SelectedContact => _selectedContact;
+    public Task SetSelectedContactAsync(Contact? value) => SetAsync(ref _selectedContact, value, nameof(SelectedContact));
 
     public ContactManager()
         : base(DocumentType)
     {
     }
 
-    public void AddContact(Contact contact)
+    public async Task AddContactAsync(Contact contact)
     {
-        Contacts.Add(contact);
-        SelectedContact = contact;
+        await Contacts.AddAsync(contact);
+        await SetSelectedContactAsync(contact);
     }
 
-    public void RemoveContact(Contact contact)
+    public async Task RemoveContactAsync(Contact contact)
     {
         if (SelectedContact == contact)
-            SelectedContact = null;
+            await SetSelectedContactAsync(null);
 
-        Contacts.Remove(contact);
+        await Contacts.RemoveAsync(contact);
     }
 
     public override ContactManagerData ToData()

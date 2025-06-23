@@ -2,6 +2,8 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework.Application;
 
@@ -18,19 +20,21 @@ public class FileDocumentType<TData, TModel> : IFileDocumentType
         FileTypes = new ReadOnlyCollection<IFileType>(fileTypes);
     }
 
-    public IDocument NewDocument() => new TModel();
-    public IDocument? OpenDocument(string filePath)
+    public Task<IDocument> NewDocumentAsync(CancellationToken cancellationToken) => Task.FromResult<IDocument>(new TModel());
+    public async Task<IDocument?> OpenDocumentAsync(string filePath, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         foreach (IFileType fileType in GetMatchingFileTypes(filePath))
         {
-            object? load = fileType.Load(filePath);
+            object? load = await fileType.LoadAsync(filePath, cancellationToken);
             if (load is not TData data)
                 continue;
 
-            IDocument model = data.ToModel();
+            IDocument model = await data.ToModelAsync();
             if (model is IFileDocument fileDocument)
             {
-                fileDocument.FilePath = filePath;
+                await fileDocument.SetFilePathAsync(filePath);
             }
 
             return model;
@@ -44,9 +48,14 @@ public class FileDocumentType<TData, TModel> : IFileDocumentType
         return GetMatchingFileTypes(fileDocument.FilePath).Any(x => x.CanSave);
     }
 
-    public void SaveDocument(IFileDocument fileDocument)
+    public async Task SaveDocumentAsync(IFileDocument fileDocument, CancellationToken cancellationToken)
     {
-        GetMatchingFileTypes(fileDocument.FilePath).FirstOrDefault(x => x.CanSave)?.Save(fileDocument.ToData(), fileDocument.FilePath!);
+        cancellationToken.ThrowIfCancellationRequested();
+        IFileType? matchingFileType = GetMatchingFileTypes(fileDocument.FilePath).FirstOrDefault(x => x.CanSave);
+        if (matchingFileType is null)
+            return;
+
+        await matchingFileType.SaveAsync(fileDocument.ToData(), fileDocument.FilePath!, cancellationToken);
     }
 
     private IEnumerable<IFileType> GetMatchingFileTypes(string? filePath)

@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Contacts" Height="450" Width="1000">
     <Window.Resources>
         <ResourceDictionary Source="Views/ContactManager.Resources.xaml" />
     </Window.Resources>

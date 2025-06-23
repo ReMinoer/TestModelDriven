@@ -1,65 +1,93 @@
-﻿using System.Windows.Input;
+﻿using System.Threading.Tasks;
+using System.Windows.Input;
 using TestModelDriven.Framework;
-using TestModelDriven.Framework.Application;
 using TestModelDriven.Framework.Application.Base;
-using TestModelDriven.Framework.UndoRedo;
 using TestModelDriven.Models;
 
 namespace TestModelDriven.ViewModels;
 
 public class ContactManagerViewModel : FileDocumentViewModelBase<ContactManager>
 {
-    private ContactViewModel? _selectedContact;
-
     public ViewModelCollection<Contact, ContactViewModel> Contacts { get; }
+
+    private ContactViewModel? _selectedContact;
     public ContactViewModel? SelectedContact
     {
         get => _selectedContact;
-        set => Model.SelectedContact = value?.Model;
+        set => PushPropertyTwoWay(
+            $"Select contact {value?.DisplayName}",
+            () => Model.SelectedContact,
+            value?.Model,
+            () => Model.SetSelectedContactAsync(value?.Model),
+            () => _selectedContact?.Model,
+            async x => _selectedContact = x is not null ? await ViewModelFactoryAsync(x) : null);
     }
 
     public ICommand AddCommand { get; }
     public ICommand RemoveCommand { get; }
+    public ICommand PublishCommand { get; }
 
     public ContactManagerViewModel(ContactManager model)
         : base(model)
     {
-        Contacts = new ViewModelCollection<Contact, ContactViewModel>(Model.Contacts, x => new ContactViewModel(x), x => x.Model);
+        Contacts = new ViewModelCollection<Contact, ContactViewModel>(Model.Contacts, ViewModelFactoryAsync, x => x.Model);
 
-        AddCommand = new Command(_ => Add());
-        RemoveCommand = new Command(_ => Remove());
+        AddCommand = new CommandDispatcherCommand("Add new contact", AddAsync);
+        RemoveCommand = new CommandDispatcherCommand(() => $"Remove contact \"{SelectedContact!.DisplayName}\"", RemoveAsync, CanRemove);
+        PublishCommand = new CommandDispatcherCommand("Publish", async () => await Task.Delay(5000));
     }
 
-    private void Add()
+    public override async Task InitializeAsync()
     {
-        UndoRedoRecorder.Batch("Add new contact");
-        Model.AddContact(new Contact { FirstName = "New", LastName = "Contact" });
+        await base.InitializeAsync();
+        await Contacts.InitializeAsync();
     }
 
-    private void Remove()
+    public override async ValueTask DisposeAsync()
     {
-        ContactViewModel? selectedContact = SelectedContact;
-        if (selectedContact is null)
-            return;
-        
-        UndoRedoRecorder.Batch($"Remove contact \"{selectedContact.DisplayName}\"");
-        Model.RemoveContact(selectedContact.Model);
+        Contacts.Dispose();
+        await base.DisposeAsync();
     }
 
-    protected override void OnModelPropertyChanged(string? propertyName)
+    static private async Task<ContactViewModel> ViewModelFactoryAsync(Contact x)
     {
-        base.OnModelPropertyChanged(propertyName);
+        var viewModel = new ContactViewModel(x);
+        await viewModel.InitializeAsync();
+        return viewModel;
+    }
+
+    private async Task AddAsync()
+    {
+        var contact = new Contact();
+        await contact.SetFirstNameAsync("New");
+        await contact.SetLastNameAsync("Contact");
+
+        await Model.AddContactAsync(contact);
+    }
+
+    private bool CanRemove() => SelectedContact is not null;
+    private async Task RemoveAsync()
+    {
+        await Model.RemoveContactAsync(SelectedContact!.Model);
+    }
+
+    protected override async Task OnModelPropertyChangedAsync(string propertyName)
+    {
+        await base.OnModelPropertyChangedAsync(propertyName);
 
         if (propertyName == nameof(ContactManager.SelectedContact))
-            Set(ref _selectedContact, Model.SelectedContact is not null ? Contacts.GetViewModel(Model.SelectedContact) : null, nameof(SelectedContact));
+            await SetAsync(ref _selectedContact, Contacts.GetViewModel(Model.SelectedContact), nameof(SelectedContact));
     }
 
-    public override void Present(PresenterSubject subject)
+    public override async Task<bool> PresentAsync(PresenterSubject subject)
     {
         if (subject.Model is not Contact contact)
-            return;
+            return false;
 
-        SelectedContact = Contacts.GetViewModel(contact);
-        SelectedContact?.Present(subject);
+        await Model.SetSelectedContactAsync(contact);
+        if (SelectedContact is not null)
+            await SelectedContact.PresentAsync(subject);
+
+        return true;
     }
 }

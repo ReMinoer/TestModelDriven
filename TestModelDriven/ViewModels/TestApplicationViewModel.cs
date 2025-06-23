@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using TestModelDriven.Framework;
 using TestModelDriven.Framework.Application;
@@ -11,37 +12,43 @@ public class TestApplicationViewModel : FileApplicationViewModelBase<TestApplica
 {
     public ICommand AddCommand { get; }
     public ICommand RemoveCommand { get; }
+    public ICommand PublishCommand { get; }
 
     public TestApplicationViewModel()
         : base(new TestApplication())
     {
         AddCommand = new TargetedCommand<ContactManagerViewModel?>(() => SelectedDocument as ContactManagerViewModel, x => x?.AddCommand);
         RemoveCommand = new TargetedCommand<ContactManagerViewModel?>(() => SelectedDocument as ContactManagerViewModel, x => x?.RemoveCommand);
+        PublishCommand = new TargetedCommand<ContactManagerViewModel?>(() => SelectedDocument as ContactManagerViewModel, x => x?.PublishCommand);
 
         MenuItems.Add(new MenuItemViewModel("Add contact", AddCommand));
         MenuItems.Add(new MenuItemViewModel("Remove contact", RemoveCommand));
+        MenuItems.Add(new MenuItemViewModel("Publish", PublishCommand));
     }
 
-    public override IDocumentViewModel? CreateViewModel(object model)
+    public override Task<IDocumentViewModel?> CreateViewModelAsync(object model)
     {
-        return model switch
+        return Task.FromResult<IDocumentViewModel?>(model switch
         {
             ContactManager contactManager => new ContactManagerViewModel(contactManager),
             _ => null
-        };
+        });
     }
 
-    public override void Present(PresenterSubject subject)
+    public override async Task<bool> PresentAsync(PresenterSubject subject)
     {
         if (subject.Model is null)
-            return;
+            return false;
 
         // TODO: Implement model parenting
         ContactManagerViewModel? contactManagerViewModel = Documents.OfType<ContactManagerViewModel>().FirstOrDefault(cm => cm.Contacts.HasViewModel(subject.Model));
         if (contactManagerViewModel is null)
-            return;
+            return false;
 
-        Model.SelectedDocument = contactManagerViewModel.Model;
-        SelectedDocument?.Present(subject);
+        await Model.SetSelectedDocumentAsync(contactManagerViewModel.Model);
+        if (SelectedDocument is not null)
+            await SelectedDocument.PresentAsync(subject);
+
+        return true;
     }
 }

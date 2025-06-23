@@ -1,7 +1,8 @@
-﻿namespace TestModelDriven.Framework;
+﻿using System;
 
-public interface IViewModel
+namespace TestModelDriven.Framework;
+
+public interface IViewModel : IAsyncInitializable, IAsyncDisposable
 {
-    void OnLoaded();
-    void OnUnloaded();
+    bool IsDisposed { get; }
 }

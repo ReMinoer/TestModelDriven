@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework.UndoRedo;
 
-public interface IUndoRedoStack : IDisposable
+public interface IUndoRedoStack : IAsyncDisposable
 {
-    void Push(IUndoRedo undoRedo);
+    Task PushAsync(IUndoRedo undoRedo);
 }

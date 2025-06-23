@@ -5,15 +5,13 @@ namespace TestModelDriven.Framework;
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public class StateAttribute : Attribute
 {
+    public string AsyncSetterName { get; }
     public StateOwnership Ownership { get; }
+    public bool IsOwner => Ownership == StateOwnership.Owner;
 
-    public StateAttribute()
+    public StateAttribute(string asyncSetterName, StateOwnership ownership = StateOwnership.Owner)
     {
-        Ownership = StateOwnership.Owner;
-    }
-
-    public StateAttribute(StateOwnership ownership)
-    {
+        AsyncSetterName = asyncSetterName;
         Ownership = ownership;
     }
 }

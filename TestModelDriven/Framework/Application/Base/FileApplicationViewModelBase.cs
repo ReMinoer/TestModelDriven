@@ -1,4 +1,6 @@
 ﻿using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.WindowsAPICodePack.Dialogs;
 
@@ -17,12 +19,12 @@ public abstract class FileApplicationViewModelBase<TApplication> : ApplicationVi
     protected FileApplicationViewModelBase(TApplication application)
         : base(application)
     {
-        NewCommand = new Command<IFileDocumentType>(New);
-        OpenCommand = new Command(_ => Open());
-        SaveCommand = new Command(_ => CanSave(), _ => Save());
-        SaveAsCommand = new Command(_ => CanSaveAs(), _ => SaveAs());
-        UndoCommand = new Command(_ => CanUndo(), _ => Undo());
-        RedoCommand = new Command(_ => CanRedo(), _ => Redo());
+        NewCommand = new CommandDispatcherCommand<IFileDocumentType>("New document", NewAsync);
+        OpenCommand = new CommandDispatcherCommand("Open file", OpenAsync);
+        SaveCommand = new CommandDispatcherCommand("Save document", () => SaveAsync(), CanSave);
+        SaveAsCommand = new CommandDispatcherCommand("Save document as new file", SaveAsAsync, CanSaveAs);
+        UndoCommand = new CommandDispatcherCommand("Undo", UndoAsync, CanUndo);
+        RedoCommand = new CommandDispatcherCommand("Redo", RedoAsync, CanRedo);
 
         var newMenu = new MenuItemViewModel("New", NewCommand);
         foreach (IFileDocumentType fileDocumentType in Model.FileDocumentTypes)
@@ -50,12 +52,12 @@ public abstract class FileApplicationViewModelBase<TApplication> : ApplicationVi
         });
     }
     
-    private void New(IFileDocumentType documentType)
+    private async Task NewAsync(IFileDocumentType documentType)
     {
-        Model.NewDocument(documentType);
+        await Model.NewDocumentAsync(documentType, CancellationToken.None);
     }
 
-    private void Open()
+    private async Task OpenAsync()
     {
         var openFileDialog = new CommonOpenFileDialog();
 
@@ -67,19 +69,19 @@ public abstract class FileApplicationViewModelBase<TApplication> : ApplicationVi
         CommonFileDialogResult dialogResult = openFileDialog.ShowDialog();
         if (dialogResult != CommonFileDialogResult.Ok)
             return;
-        
-        Model.OpenFile(openFileDialog.FileName);
+
+        await Model.OpenFileAsync(openFileDialog.FileName, CancellationToken.None);
     }
 
     private bool CanSave()
     {
         return SelectedDocument is not null
-            && SelectedDocument.UndoRedoStack.IsDirty
+            && SelectedDocument.UndoRedoStack.Model.IsDirty
             && SelectedDocument.Model is IFileDocument fileDocument
             && fileDocument.FileDocumentType.CanSaveDocument(fileDocument);
     }
 
-    private void Save(bool saveAs = false)
+    private async Task SaveAsync(bool saveAs = false)
     {
         if (SelectedDocument?.Model is not IFileDocument fileDocument || !CanSave())
             return;
@@ -100,18 +102,32 @@ public abstract class FileApplicationViewModelBase<TApplication> : ApplicationVi
             if (dialogResult != CommonFileDialogResult.Ok)
                 return;
 
-            fileDocument.FilePath = saveFileDialog.FileName;
+            await fileDocument.SetFilePathAsync(saveFileDialog.FileName);
         }
 
-        Model.SaveDocument(fileDocument);
-        SelectedDocument.UndoRedoStack.SaveCurrentIndex();
+        await Model.SaveDocumentAsync(fileDocument, CancellationToken.None);
+        await SelectedDocument.UndoRedoStack.Model.SaveCurrentIndexAsync();
     }
 
     private bool CanSaveAs() => CanSave();
-    private void SaveAs() => Save(saveAs: true);
+    private Task SaveAsAsync() => SaveAsync(saveAs: true);
 
-    private bool CanUndo() => SelectedDocument?.UndoRedoStack.CanUndo ?? false;
-    private bool CanRedo() => SelectedDocument?.UndoRedoStack.CanRedo ?? false;
-    private void Undo() => SelectedDocument?.UndoRedoStack.Undo();
-    private void Redo() => SelectedDocument?.UndoRedoStack.Redo();
+    private bool CanUndo() => SelectedDocument?.UndoRedoStack.Model.CanUndo ?? false;
+    private bool CanRedo() => SelectedDocument?.UndoRedoStack.Model.CanRedo ?? false;
+
+    private async Task UndoAsync()
+    {
+        if (SelectedDocument is null)
+            return;
+
+        await SelectedDocument.UndoRedoStack.Model.UndoAsync();
+    }
+
+    private async Task RedoAsync()
+    {
+        if (SelectedDocument is null)
+            return;
+
+        await SelectedDocument.UndoRedoStack.Model.RedoAsync();
+    }
 }

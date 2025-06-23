@@ -1,8 +1,10 @@
 ﻿using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework;
 
 public interface ISaveFormat
 {
-    void Save(object data, Stream stream);
+    Task SaveAsync(object data, Stream stream, CancellationToken cancellationToken);
 }

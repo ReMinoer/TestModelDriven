@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework.Application.Base;
 
@@ -6,28 +8,29 @@ public abstract class FileApplicationBase : Application
 {
     public abstract IReadOnlyList<IFileDocumentType> FileDocumentTypes { get; }
 
-    public void NewDocument(IFileDocumentType fileDocumentType)
+    public async Task NewDocumentAsync(IFileDocumentType fileDocumentType, CancellationToken cancellationToken)
     {
-        IDocument document = fileDocumentType.NewDocument();
-
-        AddDocument(document);
+        IDocument document = await fileDocumentType.NewDocumentAsync(cancellationToken);
+        await AddDocumentAsync(document);
     }
 
-    public void OpenFile(string filePath)
+    public async Task OpenFileAsync(string filePath, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         foreach (IFileDocumentType documentType in FileDocumentTypes)
         {
-            IDocument? document = documentType.OpenDocument(filePath);
+            IDocument? document = await documentType.OpenDocumentAsync(filePath, cancellationToken);
             if (document is null)
                 continue;
 
-            AddDocument(document);
+            await AddDocumentAsync(document);
             return;
         }
     }
 
-    public void SaveDocument(IFileDocument fileDocument)
+    public async Task SaveDocumentAsync(IFileDocument fileDocument, CancellationToken cancellationToken)
     {
-        fileDocument.FileDocumentType.SaveDocument(fileDocument);
+        await fileDocument.FileDocumentType.SaveDocumentAsync(fileDocument, cancellationToken);
     }
 }

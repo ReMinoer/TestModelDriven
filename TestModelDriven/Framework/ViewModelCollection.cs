@@ -1,95 +1,114 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework;
 
-public class ViewModelCollection<TModel, TViewModel> : IReadOnlyList<TViewModel>, INotifyPropertyChanged, INotifyCollectionChanged, IDisposable
+public class ViewModelCollection<TModel, TViewModel>
+    : IReadOnlyList<TViewModel>, IPropertyChangeNotifier, ICollectionChangeNotifier,
+        INotifyPropertyChanged, INotifyCollectionChanged, IDisposable
 {
-    private readonly ObservableCollection<TViewModel> _list;
-    private readonly INotifyPropertyChanged _propertyChangedSource;
+    private readonly AsyncList<TViewModel> _list;
+    private readonly IDisposable _propertyChangedSubscription;
+    private readonly IDisposable _collectionChangedSubscription;
 
-    public event PropertyChangedEventHandler? PropertyChanged;
-    public event NotifyCollectionChangedEventHandler? CollectionChanged;
+    private readonly AsyncList<TModel> _modelList;
+    private readonly IDisposable _modelListSubscription;
+    private readonly Func<TModel, Task<TViewModel>> _viewModelFactory;
+    private readonly Func<TViewModel, TModel> _modelGetter;
 
     public int Count => _list.Count;
     public TViewModel this[int index] => _list[index];
 
-    private readonly ObservableCollection<TModel> _modelList;
-    private readonly Func<TModel, TViewModel> _viewModelFactory;
-    private readonly Func<TViewModel, TModel> _modelGetter;
+    private readonly AsyncEvent<PropertyChange> _propertyChangedAsync = new();
+    public IAsyncEvent<PropertyChange> PropertyChangedAsync => _propertyChangedAsync.Public;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ViewModelCollection(ObservableCollection<TModel> modelList, Func<TModel, TViewModel> viewModelFactory, Func<TViewModel, TModel> modelGetter)
+    private readonly AsyncEvent<CollectionChange> _collectionChangedAsync = new();
+    public IAsyncEvent<CollectionChange> CollectionChangedAsync => _collectionChangedAsync.Public;
+    public event NotifyCollectionChangedEventHandler? CollectionChanged;
+
+    public ViewModelCollection(
+        AsyncList<TModel> modelList,
+        Func<TModel, Task<TViewModel>> viewModelFactory,
+        Func<TViewModel, TModel> modelGetter)
     {
-        _list = new ObservableCollection<TViewModel>();
-        _propertyChangedSource = _list;
-
-        _propertyChangedSource.PropertyChanged += OnPropertyChanged;
-        _list.CollectionChanged += OnCollectionChanged;
+        _list = new AsyncList<TViewModel>();
+        _propertyChangedSubscription = _list.PropertyChangedAsync.Subscribe(OnPropertyChangedAsync);
+        _collectionChangedSubscription = _list.CollectionChangedAsync.Subscribe(OnCollectionChangedAsync);
 
         _modelList = modelList;
         _viewModelFactory = viewModelFactory;
         _modelGetter = modelGetter;
 
+        _modelListSubscription = _modelList.CollectionChangedAsync.Subscribe(OnModelCollectionChangedAsync);
+    }
+
+    public async Task InitializeAsync()
+    {
         for (int i = 0; i < _modelList.Count; i++)
         {
-            _list.Insert(i, _viewModelFactory(_modelList[i]));
+            await _list.InsertAsync(i, await _viewModelFactory(_modelList[i]));
         }
-
-        _modelList.CollectionChanged += OnModelCollectionChanged;
-    }
-
-    public bool HasViewModel(object model)
-    {
-        return _list.Any(x => Equals(_modelGetter(x), model));
-    }
-
-    public TViewModel? GetViewModel(object model)
-    {
-        return _list.FirstOrDefault(x => Equals(_modelGetter(x), model));
     }
 
     public void Dispose()
     {
-        _modelList.CollectionChanged -= OnModelCollectionChanged;
+        _modelListSubscription.Dispose();
 
-        _list.CollectionChanged -= OnCollectionChanged;
-        _propertyChangedSource.PropertyChanged -= OnPropertyChanged;
+        _collectionChangedSubscription.Dispose();
+        _propertyChangedSubscription.Dispose();
     }
 
-    private void OnModelCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    public bool HasViewModel(object? model)
     {
-        switch (e.Action)
+        if (model is null)
+            return false;
+
+        return _list.Any(x => Equals(_modelGetter(x), model));
+    }
+
+    public TViewModel? GetViewModel(object? model)
+    {
+        if (model is null)
+            return default;
+
+        return _list.FirstOrDefault(x => Equals(_modelGetter(x), model));
+    }
+
+    private async Task OnModelCollectionChangedAsync(CollectionChange change)
+    {
+        switch (change.Action)
         {
-            case NotifyCollectionChangedAction.Add:
-                for (int i = 0; i < e.NewItems!.Count; i++)
+            case CollectionChangeAction.Add:
+                for (int i = 0; i < change.NewItems!.Count; i++)
                 {
-                    var newModelItem = (TModel)e.NewItems[i];
-                    TViewModel newViewModelItem = _viewModelFactory(newModelItem);
-                    _list.Insert(e.NewStartingIndex + i, newViewModelItem);
+                    var newModelItem = (TModel)change.NewItems[i];
+                    TViewModel newViewModelItem = await _viewModelFactory(newModelItem);
+                    await _list.InsertAsync(change.NewStartingIndex + i, newViewModelItem);
                 }
                 break;
-            case NotifyCollectionChangedAction.Remove:
-                for (int i = 0; i < e.OldItems!.Count; i++)
+            case CollectionChangeAction.Remove:
+                for (int i = 0; i < change.OldItems!.Count; i++)
                 {
-                    var oldModelItem = (TModel)e.OldItems[i];
+                    var oldModelItem = (TModel)change.OldItems[i];
                     TViewModel oldViewModelItem = this.First(x => Equals(_modelGetter(x), oldModelItem));
-                    _list.Remove(oldViewModelItem);
+                    await _list.RemoveAsync(oldViewModelItem);
                 }
                 break;
-            case NotifyCollectionChangedAction.Replace:
+            case CollectionChangeAction.Replace:
                 throw new NotSupportedException();
-            case NotifyCollectionChangedAction.Move:
+            case CollectionChangeAction.Move:
                 throw new NotSupportedException();
-            case NotifyCollectionChangedAction.Reset:
-                _list.Clear();
+            case CollectionChangeAction.Reset:
+                await _list.ClearAsync();
                 for (int i = 0; i < _modelList.Count; i++)
                 {
-                    _list.Insert(i, _viewModelFactory(_modelList[i]));
+                    await _list.InsertAsync(i, await _viewModelFactory(_modelList[i]));
                 }
                 break;
             default:
@@ -97,15 +116,16 @@ public class ViewModelCollection<TModel, TViewModel> : IReadOnlyList<TViewModel>
         }
     }
 
-    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private async Task OnPropertyChangedAsync(PropertyChange change)
     {
-        if (e.PropertyName == nameof(Count))
-            PropertyChanged?.Invoke(this, e);
+        await _propertyChangedAsync.RaiseAsync(change);
+        PropertyChanged?.Invoke(this, change.ToEventArgs());
     }
 
-    private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private async Task OnCollectionChangedAsync(CollectionChange change)
     {
-        CollectionChanged?.Invoke(this, e);
+        await _collectionChangedAsync.RaiseAsync(change);
+        CollectionChanged?.Invoke(this, change.ToEventArgs());
     }
 
     public IEnumerator<TViewModel> GetEnumerator() => _list.GetEnumerator();

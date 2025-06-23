@@ -1,24 +1,14 @@
-﻿namespace TestModelDriven.Framework.Application.Base;
+﻿using System.Threading.Tasks;
+
+namespace TestModelDriven.Framework.Application.Base;
 
 public abstract class FileDocumentBase<TData> : PersistentModelBase<TData>, IFileDocument<TData>
     where TData : IData
 {
-    private string _header = string.Empty;
     private string? _filePath;
-
-    [State]
-    public string Header
-    {
-        get => _header;
-        protected set => Set(ref _header, value);
-    }
-
-    [State]
-    public string? FilePath
-    {
-        get => _filePath;
-        set => Set(ref _filePath, value);
-    }
+    [State(nameof(SetFilePathAsync))]
+    public string? FilePath => _filePath;
+    public Task SetFilePathAsync(string? value) => SetAsync(ref _filePath, value, nameof(FilePath));
 
     public IFileDocumentType FileDocumentType { get; }
 

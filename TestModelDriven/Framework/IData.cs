@@ -1,12 +1,14 @@
-﻿namespace TestModelDriven.Framework;
+﻿using System.Threading.Tasks;
+
+namespace TestModelDriven.Framework;
 
 public interface IData
 {
-    object ToModel();
+    Task<object> ToModelAsync();
 }
 
-public interface IData<out TModel> : IData
+public interface IData<TModel> : IData
     where TModel : notnull
 {
-    new TModel ToModel();
+    new Task<TModel> ToModelAsync();
 }

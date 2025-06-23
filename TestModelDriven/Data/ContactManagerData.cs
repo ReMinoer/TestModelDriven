@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using TestModelDriven.Framework;
 using TestModelDriven.Models;
 
@@ -8,12 +9,12 @@ public class ContactManagerData : DataBase<ContactManager>
 {
     public List<ContactData> Contacts { get; } = new();
 
-    public override ContactManager ToModel()
+    public override async Task<ContactManager> ToModelAsync()
     {
         var model = new ContactManager();
 
         foreach (ContactData contactData in Contacts)
-            model.Contacts.Add(contactData.ToModel());
+            await model.Contacts.AddAsync(await contactData.ToModelAsync());
 
         return model;
     }

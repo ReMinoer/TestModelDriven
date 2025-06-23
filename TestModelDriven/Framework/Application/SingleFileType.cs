@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework.Application;
 
@@ -32,18 +34,18 @@ public class SingleFileType : IFileType
     {
     }
 
-    public object? Load(string filePath)
+    public async Task<object?> LoadAsync(string filePath, CancellationToken cancellationToken)
     {
-        using FileStream fileStream = File.OpenRead(filePath);
-        return _loadFormat.Load(fileStream);
+        await using FileStream fileStream = File.OpenRead(filePath);
+        return await _loadFormat.LoadAsync(fileStream, cancellationToken);
     }
-
-    public void Save(object data, string filePath)
+        
+    public async Task SaveAsync(object data, string filePath, CancellationToken cancellationToken)
     {
         if (_saveFormat is null)
             throw new InvalidOperationException("Save is not supported.");
 
-        using FileStream fileStream = File.OpenWrite(filePath);
-        _saveFormat.Save(data, fileStream);
+        await using FileStream fileStream = File.OpenWrite(filePath);
+        await _saveFormat.SaveAsync(data, fileStream, cancellationToken);
     }
 }

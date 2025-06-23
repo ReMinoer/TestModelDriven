@@ -1,8 +1,11 @@
-﻿namespace TestModelDriven.Framework.Application;
+﻿using System.Threading.Tasks;
+
+namespace TestModelDriven.Framework.Application;
 
 public interface IFileDocument : IDocument, IPersistentModel
 {
-    string? FilePath { get; set; }
+    string? FilePath { get; }
+    Task SetFilePathAsync(string? value);
     IFileDocumentType FileDocumentType { get; }
 }
 

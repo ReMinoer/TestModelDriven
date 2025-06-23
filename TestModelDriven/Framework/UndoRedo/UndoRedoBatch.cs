@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework.UndoRedo;
 
@@ -25,30 +26,31 @@ public class UndoRedoBatch : IUndoRedoBatch
         Batch = _batch.AsReadOnly();
     }
 
-    public virtual void Push(IUndoRedo undoRedo)
+    public virtual Task PushAsync(IUndoRedo undoRedo)
     {
         _batch.Add(undoRedo);
+        return Task.CompletedTask;
     }
 
-    public virtual void Redo()
+    public virtual async Task RedoAsync()
     {
         foreach (IUndoRedo undoRedo in _batch)
-            undoRedo.Redo();
+            await undoRedo.RedoAsync().ConfigureAwait(false);
 
         IsDone = true;
     }
 
-    public virtual void Undo()
+    public virtual async Task UndoAsync()
     {
         foreach (IUndoRedo undoRedo in _batch.Reverse<IUndoRedo>())
-            undoRedo.Undo();
+            await undoRedo.UndoAsync().ConfigureAwait(false);
 
         IsDone = false;
     }
 
-    public virtual void Dispose()
+    public virtual async ValueTask DisposeAsync()
     {
         foreach (IUndoRedo undoRedo in _batch)
-            undoRedo.Dispose();
+            await undoRedo.DisposeAsync().ConfigureAwait(false);
     }
 }

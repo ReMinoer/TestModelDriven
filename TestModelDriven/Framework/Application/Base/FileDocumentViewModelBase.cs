@@ -1,6 +1,6 @@
-﻿using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework.Application.Base;
 
@@ -8,49 +8,56 @@ public abstract class FileDocumentViewModelBase<TModel> : DocumentViewModelBase<
     where TModel : IFileDocument, INotifyPropertyChanged
 {
     private string? _filePath;
-    public string? FilePath
+    public string? FilePath => _filePath;
+    protected async Task RefreshFilePathAsync() => await RefreshFilePathAsync(Model.FilePath);
+    protected async Task RefreshFilePathAsync(string? value)
     {
-        get => _filePath;
-        set
-        {
-            if (!Set(ref _filePath, value))
-                return;
+        if (_filePath == value)
+            return;
 
-            FileName = Path.GetFileNameWithoutExtension(FilePath);
+        await using (SetPropertyScope(ref _filePath, value))
+        {
+            _filePath = value;
+            await RefreshFileNameAsync();
         }
     }
 
     private string? _fileName;
-    public string? FileName
+    public string? FileName => _fileName;
+    private Task RefreshFileNameAsync() => RefreshFileNameAsync(Path.GetFileNameWithoutExtension(FilePath));
+    private async Task RefreshFileNameAsync(string? value)
     {
-        get => _fileName;
-        private set
-        {
-            if (!Set(ref _fileName, value))
-                return;
+        if (_fileName == value)
+            return;
 
-            RefreshHeader();
+        await using (SetPropertyScope(ref _fileName, value))
+        {
+            _fileName = value;
+            await RefreshHeaderAsync();
         }
     }
 
-    public FileDocumentViewModelBase(TModel model)
+    private Task RefreshHeaderAsync() => RefreshHeaderAsync($"{FileName ?? "New"}{(UndoRedoStack.Model.IsDirty ? "*" : "")}");
+
+    protected FileDocumentViewModelBase(TModel model)
         : base(model)
     {
-        FilePath = Model.FilePath;
-        RefreshHeader();
     }
 
-    protected override void OnModelPropertyChanged(string? propertyName)
+    public override async Task InitializeAsync()
     {
-        base.OnModelPropertyChanged(propertyName);
+        await base.InitializeAsync();
+        await RefreshFilePathAsync();
+    }
 
+    protected override async Task OnModelPropertyChangedAsync(string propertyName)
+    {
         if (propertyName == nameof(IFileDocument.FilePath))
-            FilePath = Model.FilePath;
+            await RefreshFilePathAsync();
     }
 
-    protected override void OnIsDirtyChanged(object? sender, EventArgs e) => RefreshHeader();
-    private void RefreshHeader()
+    protected override async Task OnIsDirtyChangedAsync()
     {
-        Header = $"{FileName ?? "New"}{(UndoRedoStack.IsDirty ? "*" : "")}";
+        await RefreshHeaderAsync();
     }
 }

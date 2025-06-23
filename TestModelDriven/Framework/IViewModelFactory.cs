@@ -1,7 +1,9 @@
-﻿namespace TestModelDriven.Framework;
+﻿using System.Threading.Tasks;
 
-public interface IViewModelFactory<out T>
-    where T : IViewModel
+namespace TestModelDriven.Framework;
+
+public interface IViewModelFactory<T>
+    where T : IViewModel?
 {
-    T? CreateViewModel(object model);
+    Task<T> CreateViewModelAsync(object model);
 }

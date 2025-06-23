@@ -1,6 +1,8 @@
-﻿namespace TestModelDriven.Framework;
+﻿using System.Threading.Tasks;
+
+namespace TestModelDriven.Framework;
 
 public interface IPresenter
 {
-    void Present(PresenterSubject subject);
+    Task<bool> PresentAsync(PresenterSubject subject);
 }

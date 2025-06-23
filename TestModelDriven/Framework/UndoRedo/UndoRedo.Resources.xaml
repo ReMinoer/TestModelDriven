@@ -1,11 +1,8 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:undoRedo="clr-namespace:TestModelDriven.Framework.UndoRedo"
-                    xmlns:views="clr-namespace:TestModelDriven.Views"
-                    xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
-                    xmlns:framework="clr-namespace:TestModelDriven.Framework">
+                    xmlns:undoRedo="clr-namespace:TestModelDriven.Framework.UndoRedo">
 
-    <views:UndoRedoTemplateSelector x:Key="UndoRedoTemplateSelector" />
+    <undoRedo:UndoRedoTemplateSelector x:Key="UndoRedoTemplateSelector" />
 
     <DataTemplate x:Key="UndoRedoTemplate" DataType="{x:Type undoRedo:IUndoRedo}">
         <TextBlock Text="{Binding Description}" />
@@ -17,9 +14,6 @@
 
     <DataTemplate DataType="{x:Type undoRedo:UndoRedoStackViewModel}">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <b:Interaction.Behaviors>
-                <framework:ViewModelLoadingBehavior ViewModel="{Binding}" />
-            </b:Interaction.Behaviors>
             <DockPanel VerticalAlignment="Top">
                 <Slider DockPanel.Dock="Left"
                         Orientation="Vertical"
@@ -27,10 +21,10 @@
                         IsMoveToPointEnabled="True"
                         Value="{Binding CurrentIndex, Mode=TwoWay}"
                         Minimum="0"
-                        Maximum="{Binding Stack.Count}"
+                        Maximum="{Binding Model.Stack.Count}"
                         IsSnapToTickEnabled="True"
                         TickFrequency="1" />
-                <TreeView ItemsSource="{Binding Stack}"
+                <TreeView ItemsSource="{Binding Model.Stack}"
                           ItemTemplateSelector="{StaticResource UndoRedoTemplateSelector}" />
             </DockPanel>
         </ScrollViewer>

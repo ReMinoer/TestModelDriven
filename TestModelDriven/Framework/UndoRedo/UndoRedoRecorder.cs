@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework.UndoRedo;
 
@@ -21,6 +21,10 @@ public class UndoRedoRecorder : IDisposable
 
     private readonly Subject<UndoRedoRecorderBatch?> _batchSubject;
     private readonly IDisposable _batchSubscription;
+
+    private readonly Dictionary<IStateChangeNotifier, IDisposable> _stateSubscriptions = new();
+    private readonly Dictionary<ICollectionChangeNotifier, IDisposable> _collectionSubscriptions = new();
+    private readonly Dictionary<IAsyncList, StateCollectionAttribute> _collectionAttributes = new();
 
     private IUndoRedoStack ActiveStack
     {
@@ -58,7 +62,8 @@ public class UndoRedoRecorder : IDisposable
         _needNewBatch = true;
     }
 
-    private void OnBatchFree(UndoRedoBatch? batch)
+    private void OnBatchFree(UndoRedoBatch? batch) => OnBatchFreeAsync(batch).CaptureThrow();
+    private async Task OnBatchFreeAsync(UndoRedoBatch? batch)
     {
         if (batch is null)
             return;
@@ -69,13 +74,13 @@ public class UndoRedoRecorder : IDisposable
             if (_batchDescription is not null)
                 uniqueUndoRedo = uniqueUndoRedo.PostDescription(_batchDescription);
 
-            _undoRedoStack.Push(uniqueUndoRedo);
+            await _undoRedoStack.PushAsync(uniqueUndoRedo);
         }
         else
         {
-            _undoRedoStack.Push(batch);
+            await _undoRedoStack.PushAsync(batch);
         }
-        
+
         _currentBatch = new UndoRedoRecorderBatch();
         _batchDescription = null;
     }
@@ -84,285 +89,383 @@ public class UndoRedoRecorder : IDisposable
     {
         private UndoRedoBatch? _currentSubBatch;
 
-        public override void Push(IUndoRedo undoRedo)
+        public override async Task PushAsync(IUndoRedo undoRedo)
         {
             if (_currentSubBatch is null || _needNewBatch)
             {
                 _currentSubBatch = new UndoRedoBatch(_batchDescription);
-                base.Push(_currentSubBatch);
+                await base.PushAsync(_currentSubBatch);
 
                 _needNewBatch = false;
             }
 
-            _currentSubBatch.Push(undoRedo);
+            await _currentSubBatch.PushAsync(undoRedo);
         }
     }
 
-    public void Subscribe(INotifyStateChanged state)
+    public void Subscribe(IStateChangeNotifier state)
     {
-        state.StateChanged += OnStateChanged;
+        _stateSubscriptions.Add(state, state.StateChangedAsync.Subscribe(OnChangeAsync));
 
-        foreach (PropertyInfo statePropertyInfo in GetStateProperties(state.GetType()))
+        foreach (PropertyInfo statePropertyInfo in state.GetType().GetProperties())
         {
-            object? value = statePropertyInfo.GetValue(state);
-
-            if (value is INotifyStateChanged subState)
+            var stateAttribute = statePropertyInfo.GetCustomAttribute<StateAttribute>();
+            if (stateAttribute is not null)
             {
-                Subscribe(subState);
-            }
-
-            if (value is IEnumerable subStateEnumerable)
-            {
-                foreach (INotifyStateChanged subStateItem in subStateEnumerable.OfType<INotifyStateChanged>())
+                object? value = statePropertyInfo.GetValue(state);
+                if (value is IStateChangeNotifier subState)
                 {
-                    Subscribe(subStateItem);
+                    Subscribe(subState);
                 }
             }
 
-            if (value is INotifyCollectionChanged subStateNotifyCollectionChanged)
+            var stateCollectionAttribute = statePropertyInfo.GetCustomAttribute<StateCollectionAttribute>();
+            if (stateCollectionAttribute is not null)
             {
-                subStateNotifyCollectionChanged.CollectionChanged += OnStateCollectionChanged;
+                object? value = statePropertyInfo.GetValue(state);
+
+                if (value is ICollectionChangeNotifier collectionChangeNotifier and IAsyncList subStateList)
+                {
+                    _collectionAttributes.Add(subStateList, stateCollectionAttribute);
+
+                    IDisposable subscription = collectionChangeNotifier.CollectionChangedAsync.Subscribe(OnChangeAsync);
+                    _collectionSubscriptions.Add(collectionChangeNotifier, subscription);
+                }
+
+                if (value is IEnumerable subStateEnumerable)
+                {
+                    foreach (IStateChangeNotifier subStateItem in subStateEnumerable.OfType<IStateChangeNotifier>())
+                    {
+                        Subscribe(subStateItem);
+                    }
+                }
             }
         }
     }
 
-    public void Unsubscribe(INotifyStateChanged state)
+    public void Unsubscribe(IStateChangeNotifier state)
     {
-        foreach (PropertyInfo statePropertyInfo in GetStateProperties(state.GetType()))
+        foreach (PropertyInfo statePropertyInfo in state.GetType().GetProperties())
         {
-            object? value = statePropertyInfo.GetValue(state);
-
-            if (value is INotifyStateChanged subState)
+            var stateAttribute = statePropertyInfo.GetCustomAttribute<StateAttribute>();
+            if (stateAttribute is not null)
             {
-                Unsubscribe(subState);
-            }
+                object? value = statePropertyInfo.GetValue(state);
 
-            if (value is IEnumerable subStateEnumerable)
-            {
-                foreach (INotifyStateChanged subStateItem in subStateEnumerable.OfType<INotifyStateChanged>())
+                if (value is IStateChangeNotifier subState)
                 {
-                    Unsubscribe(subStateItem);
+                    Unsubscribe(subState);
                 }
             }
 
-            if (value is INotifyCollectionChanged subStateNotifyCollectionChanged)
+            var stateCollectionAttribute = statePropertyInfo.GetCustomAttribute<StateCollectionAttribute>();
+            if (stateCollectionAttribute is not null)
             {
-                subStateNotifyCollectionChanged.CollectionChanged -= OnStateCollectionChanged;
+                object? value = statePropertyInfo.GetValue(state);
+
+                if (value is IEnumerable subStateEnumerable)
+                {
+                    foreach (IStateChangeNotifier subStateItem in subStateEnumerable.OfType<IStateChangeNotifier>())
+                    {
+                        Unsubscribe(subStateItem);
+                    }
+                }
+
+                if (value is ICollectionChangeNotifier collectionChangeNotifier and IAsyncList subStateList)
+                {
+                    _collectionSubscriptions[collectionChangeNotifier].Dispose();
+                    _collectionSubscriptions.Remove(collectionChangeNotifier);
+
+                    _collectionAttributes.Remove(subStateList);
+                }
             }
         }
 
-        state.StateChanged -= OnStateChanged;
+        _stateSubscriptions[state].Dispose();
+        _stateSubscriptions.Remove(state);
     }
-
-    static private IEnumerable<PropertyInfo> GetStateProperties(Type type)
-    {
-        return type.GetProperties().Where(x => x.GetCustomAttribute<StateAttribute>() is not null);
-    }
-
-    private void OnStateChanged(object sender, StateChangedEventArgs e)
+    
+    private async Task OnChangeAsync(StateChange change)
     {
         if (_isObservingStateChange)
             return;
 
-        if (e.PropertyName is null)
-            return;
-
-        PropertyInfo? propertyInfo = sender.GetType().GetProperty(e.PropertyName);
+        Type type = change.Owner.GetType();
+        PropertyInfo? propertyInfo = type.GetProperty(change.PropertyName);
         if (propertyInfo is null)
-            throw new InvalidOperationException();
+            throw new InvalidOperationException($"Cannot resolve the property {change.PropertyName}.");
 
         var stateAttribute = propertyInfo.GetCustomAttribute<StateAttribute>();
         if (stateAttribute is null)
-            return;
+            throw new InvalidOperationException($"Cannot find a {nameof(StateAttribute)} on property {propertyInfo.Name}.");
 
-        if (stateAttribute.Ownership == StateOwnership.Owner)
+        MethodInfo? asyncSetterInfo = type.GetMethod(stateAttribute.AsyncSetterName, new[] {propertyInfo.PropertyType});
+        if (asyncSetterInfo is null)
+            throw new InvalidOperationException($"Cannot resolve the async setter \"{stateAttribute.AsyncSetterName}\".");
+        if (asyncSetterInfo.ReturnType != typeof(Task) && asyncSetterInfo.ReturnType != typeof(ValueTask))
+            throw new InvalidOperationException($"Async setter \"{stateAttribute.AsyncSetterName}\" does not return a {nameof(Task)} nor a {nameof(ValueTask)}.");
+
+        if (stateAttribute.IsOwner)
         {
-            if (e.OldValue is INotifyStateChanged oldState)
+            if (change.OldValue is IStateChangeNotifier oldState)
             {
                 Unsubscribe(oldState);
             }
 
-            if (e.NewValue is INotifyStateChanged newState)
+            if (change.NewValue is IStateChangeNotifier newState)
             {
                 Subscribe(newState);
             }
         }
 
-        ActiveStack.Push(new RecorderUndoRedo($"Set {e.PropertyName} of {sender} to \"{e.NewValue}\"",
-            () =>
+        await ActiveStack.PushAsync(new RecorderUndoRedo($"Set {change.PropertyName} of {change.Owner} to \"{change.NewValue}\"",
+            async () =>
             {
-                if (stateAttribute.Ownership == StateOwnership.Owner)
-                    (e.NewValue as IRestorable)?.Restore();
+                if (stateAttribute.IsOwner)
+                    await RestoreAsync(change.NewValue);
 
-                propertyInfo.SetValue(sender, e.NewValue);
+                object? result = asyncSetterInfo.Invoke(change.Owner, new[] { change.NewValue });
 
-                if (stateAttribute.Ownership == StateOwnership.Owner)
-                    (e.OldValue as IRestorable)?.Store();
+                if (result is Task task)
+                    await task;
+                else if (result is ValueTask valueTask)
+                    await valueTask;
+                else
+                    throw new InvalidOperationException($"Async setter \"{stateAttribute.AsyncSetterName}\" did not return a {nameof(Task)} nor a {nameof(ValueTask)}.");
 
-                Presenter?.Present(new PresenterSubject(sender, e.PropertyName));
+                if (stateAttribute.IsOwner)
+                    await StoreAsync(change.OldValue);
+
+                await PresentAsync(new PresenterSubject(change.Owner, change.PropertyName));
             },
-            () =>
+            async () =>
             {
-                if (stateAttribute.Ownership == StateOwnership.Owner)
-                    (e.OldValue as IRestorable)?.Restore();
-                
-                propertyInfo.SetValue(sender, e.OldValue);
+                if (stateAttribute.IsOwner)
+                    await RestoreAsync(change.OldValue);
 
-                if (stateAttribute.Ownership == StateOwnership.Owner)
-                    (e.NewValue as IRestorable)?.Store();
+                object? result = asyncSetterInfo.Invoke(change.Owner, new[] { change.OldValue });
 
-                Presenter?.Present(new PresenterSubject(sender, e.PropertyName));
+                if (result is Task task)
+                    await task;
+                else if (result is ValueTask valueTask)
+                    await valueTask;
+                else
+                    throw new InvalidOperationException($"Async setter \"{stateAttribute.AsyncSetterName}\" did not return a {nameof(Task)} nor a {nameof(ValueTask)}.");
+
+                if (stateAttribute.IsOwner)
+                    await StoreAsync(change.NewValue);
+
+                await PresentAsync(new PresenterSubject(change.Owner, change.PropertyName));
             },
-            doneDispose: () =>
+            doneDispose: async () =>
             {
-                if (stateAttribute.Ownership == StateOwnership.Owner)
-                    (e.OldValue as IDisposable)?.Dispose();
+                if (stateAttribute.IsOwner)
+                    await DisposeAsync(change.OldValue);
             },
-            undoneDispose: () =>
+            undoneDispose: async () =>
             {
-                if (stateAttribute.Ownership == StateOwnership.Owner)
-                    (e.NewValue as IDisposable)?.Dispose();
+                if (stateAttribute.IsOwner)
+                    await DisposeAsync(change.NewValue);
             }));
     }
 
-    private void OnStateCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private async Task OnChangeAsync(CollectionChange change)
     {
         if (_isObservingStateChange)
             return;
-        
-        if (sender is not IList list)
-            return;
 
-        switch (e.Action)
+        IAsyncList list = change.Owner;
+
+        if (!_collectionAttributes.TryGetValue(list, out StateCollectionAttribute? stateAttribute))
+            throw new InvalidOperationException("State collection was not registered correctly.");
+
+        switch (change.Action)
         {
-            case NotifyCollectionChangedAction.Add:
+            case CollectionChangeAction.Add:
 
-                //if (stateAttribute.Ownership == StateOwnership.Owner)
+                if (change.NewItems is null)
+                    throw new InvalidOperationException("New items were not provided.");
+                if (change.NewStartingIndex < 0)
+                    throw new InvalidOperationException("New items starting index was not provided.");
+
+                if (stateAttribute.IsOwner)
                 {
-                    foreach (object? newItem in e.NewItems!)
+                    foreach (object? newItem in change.NewItems)
                     {
-                        if (newItem is INotifyStateChanged newState)
+                        if (newItem is IStateChangeNotifier newState)
                         {
                             Subscribe(newState);
                         }
                     }
                 }
 
-                ActiveStack.Push(new RecorderUndoRedo($"Add {e.NewItems.Count} item(s) to {sender}",
-                        () =>
+                await ActiveStack.PushAsync(new RecorderUndoRedo($"Add {change.NewItems.Count} item(s) to {list}",
+                        async () =>
                         {
-                            for (int i = 0; i < e.NewItems.Count; i++)
+                            for (int i = 0; i < change.NewItems.Count; i++)
                             {
-                                var item = e.NewItems[i];
+                                var item = change.NewItems[i];
 
-                                //if (stateAttribute.Ownership == StateOwnership.Owner)
-                                    (item as IRestorable)?.Restore();
+                                if (stateAttribute.Ownership == StateOwnership.Owner)
+                                    await RestoreAsync(item);
 
-                                list.Insert(e.NewStartingIndex + i, item);
+                                await list.InsertAsync(change.NewStartingIndex + i, item);
 
-                                Presenter?.Present(new PresenterSubject(item));
+                                await PresentAsync(new PresenterSubject(item));
                             }
                         },
-                        () =>
+                        async () =>
                         {
-                            for (int i = e.NewItems.Count - 1; i >= 0; i--)
+                            for (int i = change.NewItems.Count - 1; i >= 0; i--)
                             {
-                                object? item = list[e.NewStartingIndex + i];
+                                object? item = list[change.NewStartingIndex + i];
 
-                                list.RemoveAt(e.NewStartingIndex + i);
+                                await list.RemoveAtAsync(change.NewStartingIndex + i);
 
-                                //if (stateAttribute.Ownership == StateOwnership.Owner)
-                                    (item as IRestorable)?.Store();
+                                if (stateAttribute.Ownership == StateOwnership.Owner)
+                                    await StoreAsync(item);
 
-                                Presenter?.Present(new PresenterSubject(item));
+                                await PresentAsync(new PresenterSubject(item));
                             }
                         },
-                        undoneDispose: () =>
+                        undoneDispose: async () =>
                         {
-                            //if (stateAttribute.Ownership == StateOwnership.Owner)
+                            if (stateAttribute.Ownership == StateOwnership.Owner)
                             {
-                                for (int i = 0; i < e.NewItems.Count; i++)
-                                    (e.NewItems[i] as IDisposable)?.Dispose();
+                                for (int i = 0; i < change.NewItems.Count; i++)
+                                    await DisposeAsync(change.NewItems[i]);
                             }
                         }));
 
                 break;
-            case NotifyCollectionChangedAction.Remove:
+            case CollectionChangeAction.Remove:
 
-                //if (stateAttribute.Ownership == StateOwnership.Owner)
+                if (change.OldItems is null)
+                    throw new InvalidOperationException("Old items were not provided");
+                if (change.OldStartingIndex < 0)
+                    throw new InvalidOperationException("Old items starting index was not provided.");
+
+                if (stateAttribute.IsOwner)
                 {
-                    foreach (object? oldItem in e.OldItems!)
+                    foreach (object? oldItem in change.OldItems)
                     {
-                        if (oldItem is INotifyStateChanged oldState)
+                        if (oldItem is IStateChangeNotifier oldState)
                         {
                             Unsubscribe(oldState);
                         }
                     }
                 }
 
-                ActiveStack.Push(new RecorderUndoRedo($"Remove {e.OldItems.Count} item(s) from {sender}",
-                    () =>
+                await ActiveStack.PushAsync(new RecorderUndoRedo($"Remove {change.OldItems.Count} item(s) from {list}",
+                    async () =>
                     {
-                        for (int i = e.OldItems.Count - 1; i >= 0; i--)
+                        for (int i = change.OldItems.Count - 1; i >= 0; i--)
                         {
-                            var item = list[e.OldStartingIndex + i];
+                            var item = list[change.OldStartingIndex + i];
 
-                            list.RemoveAt(e.OldStartingIndex + i);
+                            await list.RemoveAtAsync(change.OldStartingIndex + i);
 
-                            //if (stateAttribute.Ownership == StateOwnership.Owner)
-                                (item as IRestorable)?.Store();
+                            if (stateAttribute.Ownership == StateOwnership.Owner)
+                                await StoreAsync(item);
 
-                            Presenter?.Present(new PresenterSubject(item));
+                            await PresentAsync(new PresenterSubject(item));
                         }
                     },
-                    () =>
+                    async () =>
                     {
-                        for (int i = 0; i < e.OldItems.Count; i++)
+                        for (int i = 0; i < change.OldItems.Count; i++)
                         {
-                            var item = e.OldItems[i];
+                            var item = change.OldItems[i];
 
-                            //if (stateAttribute.Ownership == StateOwnership.Owner)
-                                (item as IRestorable)?.Restore();
+                            if (stateAttribute.Ownership == StateOwnership.Owner)
+                                await RestoreAsync(item);
 
-                            list.Insert(e.OldStartingIndex + i, item);
+                            await list.InsertAsync(change.OldStartingIndex + i, item);
 
-                            Presenter?.Present(new PresenterSubject(item));
+                            await PresentAsync(new PresenterSubject(item));
                         }
                     },
-                    doneDispose: () =>
+                    doneDispose: async () =>
                     {
-                        //if (stateAttribute.Ownership == StateOwnership.Owner)
+                        if (stateAttribute.Ownership == StateOwnership.Owner)
                         {
-                            for (int i = 0; i < e.OldItems.Count; i++)
-                                (e.OldItems[i] as IDisposable)?.Dispose();
+                            for (int i = 0; i < change.OldItems.Count; i++)
+                                await DisposeAsync(change.OldItems[i]);
                         }
                     }));
 
                 break;
-            case NotifyCollectionChangedAction.Replace:
+            case CollectionChangeAction.Replace:
                 throw new NotSupportedException();
-            case NotifyCollectionChangedAction.Move:
+            case CollectionChangeAction.Move:
                 throw new NotSupportedException();
-            case NotifyCollectionChangedAction.Reset:
+            case CollectionChangeAction.Reset:
                 throw new NotSupportedException();
             default:
                 throw new ArgumentOutOfRangeException();
         }
     }
 
+    private async Task PresentAsync(PresenterSubject subject)
+    {
+        if (Presenter is null)
+            return;
+
+        await Presenter.PresentAsync(subject).ConfigureAwait(false);
+    }
+
+    private async Task StoreAsync(object? obj)
+    {
+        switch (obj)
+        {
+            case IAsyncRestorable asyncRestorable:
+                await asyncRestorable.StoreAsync().ConfigureAwait(false);
+                break;
+            case IRestorable restorable:
+                restorable.Store();
+                break;
+        }
+    }
+
+    private async Task RestoreAsync(object? obj)
+    {
+        switch (obj)
+        {
+            case IAsyncRestorable asyncRestorable:
+                await asyncRestorable.RestoreAsync().ConfigureAwait(false);
+                break;
+            case IRestorable restorable:
+                restorable.Restore();
+                break;
+        }
+    }
+
+    private async Task DisposeAsync(object? obj)
+    {
+        switch (obj)
+        {
+            case IAsyncDisposable asyncDisposable:
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                break;
+            case IDisposable disposable:
+                disposable.Dispose();
+                break;
+        }
+    }
+
     private class RecorderUndoRedo : UndoRedo
     {
-        public RecorderUndoRedo(string description, Action redo, Action undo, Action? doneDispose = null, Action? undoneDispose = null)
+        public RecorderUndoRedo(string description, Func<Task> redo, Func<Task> undo, Func<Task>? doneDispose = null, Func<Task>? undoneDispose = null)
             : base(description, redo, undo, doneDispose, undoneDispose)
         {
         }
 
-        public override void Redo()
+        public override async Task RedoAsync()
         {
             _isObservingStateChange = true;
             try
             {
-                base.Redo();
+                await base.RedoAsync();
             }
             finally
             {
@@ -370,12 +473,12 @@ public class UndoRedoRecorder : IDisposable
             }
         }
 
-        public override void Undo()
+        public override async Task UndoAsync()
         {
             _isObservingStateChange = true;
             try
             {
-                base.Undo();
+                await base.UndoAsync();
             }
             finally
             {

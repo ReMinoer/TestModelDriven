@@ -1,29 +1,28 @@
 ﻿using System;
-using System.ComponentModel;
+using System.Threading.Tasks;
 
 namespace TestModelDriven.Framework;
 
-public abstract class OneForOneViewModelBase<TModel> : ViewModelBase, IOneForOneViewModel, IDisposable
-    where TModel : INotifyPropertyChanged
+public abstract class OneForOneViewModelBase<TModel> : ViewModelBase, IOneForOneViewModel
+    where TModel : IPropertyChangeNotifier
 {
+    private readonly IDisposable _propertyChangeSubscription;
+
     public TModel Model { get; }
     object IOneForOneViewModel.Model => Model;
 
     public OneForOneViewModelBase(TModel model)
     {
         Model = model;
-        Model.PropertyChanged += OnPropertyChanged;
+        _propertyChangeSubscription = Model.PropertyChangedAsync.Subscribe(OnPropertyChangeAsync);
     }
 
-    public void Dispose()
+    public override ValueTask DisposeAsync()
     {
-        Model.PropertyChanged -= OnPropertyChanged;
+        _propertyChangeSubscription.Dispose();
+        return ValueTask.CompletedTask;
     }
-
-    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        OnModelPropertyChanged(e.PropertyName);
-    }
-
-    protected abstract void OnModelPropertyChanged(string? propertyName);
+    
+    private Task OnPropertyChangeAsync(PropertyChange change) => OnModelPropertyChangedAsync(change.PropertyName);
+    protected abstract Task OnModelPropertyChangedAsync(string propertyName);
 }

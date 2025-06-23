@@ -1,8 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
-using TestModelDriven.Framework.UndoRedo;
 
-namespace TestModelDriven.Views;
+namespace TestModelDriven.Framework.UndoRedo;
 
 public class UndoRedoTemplateSelector : DataTemplateSelector
 {
