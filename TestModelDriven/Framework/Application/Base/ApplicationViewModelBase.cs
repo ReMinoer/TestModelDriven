@@ -7,9 +7,9 @@ namespace TestModelDriven.Framework.Application.Base;
 public abstract class ApplicationViewModelBase<TApplication> : OneForOneViewModelBase<TApplication>, IViewModelFactory<IDocumentViewModel?>, IApplicationViewModel, IPresenter
     where TApplication : Application
 {
-    private IDocumentViewModel? _selectedDocument;
-
     public ViewModelCollection<IDocument, IDocumentViewModel> Documents { get; }
+
+    private IDocumentViewModel? _selectedDocument;
     public IDocumentViewModel? SelectedDocument
     {
         get => _selectedDocument;
@@ -23,6 +23,7 @@ public abstract class ApplicationViewModelBase<TApplication> : OneForOneViewMode
     }
 
     public ObservableCollection<MenuItemViewModel> MenuItems { get; }
+    public CommandDispatcherWatcherViewModel CommandDispatcherWatcher { get; }
     public ICommand CloseCommand { get; }
 
     protected ApplicationViewModelBase(TApplication application)
@@ -30,6 +31,9 @@ public abstract class ApplicationViewModelBase<TApplication> : OneForOneViewMode
     {
         Documents = new ViewModelCollection<IDocument, IDocumentViewModel>(application.Documents, CreateDocumentViewModelAsync, x => x.Model);
         MenuItems = new ObservableCollection<MenuItemViewModel>();
+
+        var commandDispatcherWatcher = new CommandDispatcherWatcher(CommandDispatcher.Current);
+        CommandDispatcherWatcher = new CommandDispatcherWatcherViewModel(commandDispatcherWatcher);
 
         CloseCommand = new CommandDispatcherCommand<IDocumentViewModel>("Close document", CloseAsync);
     }

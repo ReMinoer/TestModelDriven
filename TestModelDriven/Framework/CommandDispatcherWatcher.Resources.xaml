@@ -1,0 +1,29 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:framework="clr-namespace:TestModelDriven.Framework">
+
+    <DataTemplate DataType="{x:Type framework:RunningCommandViewModel}">
+        <TextBlock Text="{Binding Description}" Foreground="{Binding TextBrush}" />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type framework:CommandDispatcherWatcherViewModel}">
+        <DockPanel VerticalAlignment="Top">
+            <ListView ItemsSource="{Binding Commands}" />
+        </DockPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="CommandDispatcherProgressBar" DataType="{x:Type framework:CommandDispatcherWatcherViewModel}">
+        <ProgressBar IsIndeterminate="True" Visibility="{Binding ProgressBarVisibility}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CommandDispatcherToolBar" DataType="{x:Type framework:CommandDispatcherWatcherViewModel}">
+        <StatusBar>
+            <StatusBarItem>
+                <StackPanel>
+                    <TextBlock Text="{Binding StatusMessage}" />
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
+    </DataTemplate>
+
+</ResourceDictionary>

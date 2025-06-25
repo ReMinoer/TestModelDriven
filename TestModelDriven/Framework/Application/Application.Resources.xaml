@@ -1,6 +1,9 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:application="clr-namespace:TestModelDriven.Framework.Application">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../CommandDispatcherWatcher.Resources.xaml" />
+    </ResourceDictionary.MergedDictionaries>
 
     <DataTemplate DataType="{x:Type application:UnsupportedDocumentViewModel}">
         <Grid>
@@ -25,19 +28,28 @@
                     </HierarchicalDataTemplate>
                 </Menu.ItemTemplate>
             </Menu>
-            <TabControl x:Name="Tabs" ItemsSource="{Binding Documents}" SelectedItem="{Binding SelectedDocument, Mode=TwoWay}">
-                <TabControl.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding Header}" VerticalAlignment="Center" Margin="0 0 5 0" />
-                            <Button Command="{Binding DataContext.CloseCommand, ElementName=Tabs}"
-                                    CommandParameter="{Binding}"
-                                    Content="X"
-                                    Style="{DynamicResource {x:Static ToolBar.ButtonStyleKey}}"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </TabControl.ItemTemplate>
-            </TabControl>
+            <ContentPresenter DockPanel.Dock="Bottom" Content="{Binding CommandDispatcherWatcher}" ContentTemplate="{StaticResource CommandDispatcherToolBar}" />
+            <ContentPresenter DockPanel.Dock="Bottom" Height="4" Content="{Binding CommandDispatcherWatcher}" ContentTemplate="{StaticResource CommandDispatcherProgressBar}" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TabControl x:Name="Tabs" ItemsSource="{Binding Documents}" SelectedItem="{Binding SelectedDocument, Mode=TwoWay}">
+                    <TabControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Header}" VerticalAlignment="Center" Margin="0 0 5 0" />
+                                <Button Command="{Binding DataContext.CloseCommand, ElementName=Tabs}"
+                                        CommandParameter="{Binding}"
+                                        Content="X"
+                                        Style="{DynamicResource {x:Static ToolBar.ButtonStyleKey}}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </TabControl.ItemTemplate>
+                </TabControl>
+                <ContentPresenter Grid.Column="1" Content="{Binding CommandDispatcherWatcher}" />
+            </Grid>
         </DockPanel>
     </DataTemplate>
     

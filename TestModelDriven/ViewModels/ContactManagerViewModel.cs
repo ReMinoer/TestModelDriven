@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using TestModelDriven.Framework;
 using TestModelDriven.Framework.Application.Base;
@@ -20,7 +21,7 @@ public class ContactManagerViewModel : FileDocumentViewModelBase<ContactManager>
             value?.Model,
             () => Model.SetSelectedContactAsync(value?.Model),
             () => _selectedContact?.Model,
-            async x => _selectedContact = x is not null ? await ViewModelFactoryAsync(x) : null);
+            x => _selectedContact = x is not null ? Contacts.GetViewModel(x) : null);
     }
 
     public ICommand AddCommand { get; }
@@ -65,7 +66,7 @@ public class ContactManagerViewModel : FileDocumentViewModelBase<ContactManager>
         await Model.AddContactAsync(contact);
     }
 
-    private bool CanRemove() => SelectedContact is not null;
+    private bool CanRemove() => SelectedContact is not null && Contacts.Contains(SelectedContact);
     private async Task RemoveAsync()
     {
         await Model.RemoveContactAsync(SelectedContact!.Model);

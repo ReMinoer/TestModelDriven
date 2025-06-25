@@ -16,6 +16,8 @@ public class RunningCommandViewModel : OneForOneViewModelBase<RunningCommand>
             value = Brushes.Black;
         else if (Model.IsCancelled)
             value = Brushes.Gray;
+        else if (Model.IsRunning)
+            value = Brushes.Green;
         else
             value = Brushes.RoyalBlue;
         
@@ -36,6 +38,7 @@ public class RunningCommandViewModel : OneForOneViewModelBase<RunningCommand>
     {
         switch (propertyName)
         {
+            case nameof(RunningCommand.IsRunning):
             case nameof(RunningCommand.IsCompleted):
             case nameof(RunningCommand.IsCancelled):
                 await RefreshTextBrushAsync();

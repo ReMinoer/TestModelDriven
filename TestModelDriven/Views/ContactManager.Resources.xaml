@@ -5,7 +5,6 @@
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="../Framework/Application/Application.Resources.xaml" />
         <ResourceDictionary Source="../Framework/UndoRedo/UndoRedo.Resources.xaml" />
-        <ResourceDictionary Source="../Framework/CommandDispatcher.Resources.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
     <DataTemplate DataType="{x:Type viewModels:ContactViewModel}">
@@ -23,7 +22,6 @@
                 <ColumnDefinition />
                 <ColumnDefinition />
                 <ColumnDefinition />
-                <ColumnDefinition />
             </Grid.ColumnDefinitions>
             <ListView ItemsSource="{Binding Contacts}" SelectedItem="{Binding SelectedContact, Mode=TwoWay}">
                 <ListView.ItemTemplate>
@@ -34,7 +32,6 @@
             </ListView>
             <ContentPresenter Grid.Column="1" Content="{Binding SelectedContact}" />
             <ContentPresenter Grid.Column="2" Content="{Binding UndoRedoStack}" />
-            <ContentPresenter Grid.Column="3" Content="{Binding CommandDispatcher}" />
         </Grid>
     </DataTemplate>
 

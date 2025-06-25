@@ -74,7 +74,7 @@ public class AsyncEvent<T> : IAsyncEvent<T>
 
     public async Task RaiseAsync(T change)
     {
-        foreach (AsyncEventHandler<T> subscriber in _subscribers)
+        foreach (AsyncEventHandler<T> subscriber in _subscribers.ToArray())
             await subscriber(change);
     }
 

@@ -77,6 +77,7 @@ public class ViewModelCollection<TModel, TViewModel>
         if (model is null)
             return default;
 
+        // TODO: Reversed dictionary
         return _list.FirstOrDefault(x => Equals(_modelGetter(x), model));
     }
 

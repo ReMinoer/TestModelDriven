@@ -11,7 +11,6 @@ public abstract class DocumentViewModelBase<TModel> : OneForOneViewModelBase<TMo
 
     public DirtyUndoRedoStackViewModel UndoRedoStack { get; }
     public UndoRedoRecorder UndoRedoRecorder { get; }
-    public CommandDispatcherViewModel CommandDispatcher { get; }
 
     private string _header = string.Empty;
     public string Header => _header;
@@ -30,8 +29,6 @@ public abstract class DocumentViewModelBase<TModel> : OneForOneViewModelBase<TMo
         {
             Presenter = this
         };
-
-        CommandDispatcher = new CommandDispatcherViewModel();
 
         UndoRedoRecorder.Subscribe(Model);
     }

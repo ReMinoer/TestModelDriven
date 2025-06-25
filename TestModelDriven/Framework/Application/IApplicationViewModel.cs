@@ -8,5 +8,6 @@ public interface IApplicationViewModel : IOneForOneViewModel
     ViewModelCollection<IDocument, IDocumentViewModel> Documents { get; }
     IDocumentViewModel? SelectedDocument { get; set; }
     ObservableCollection<MenuItemViewModel> MenuItems { get; }
+    CommandDispatcherWatcherViewModel CommandDispatcherWatcher { get; }
     ICommand CloseCommand { get; }
 }

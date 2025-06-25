@@ -38,15 +38,15 @@ public class CommandDispatcher : ICommandDispatcher
         await _commandChanged.RaiseAsync(runningCommand);
 
         using var _ = await _asyncLock.LockAsync();
-
         if (!canExecute())
         {
-            runningCommand.IsCancelled = true;
+            await runningCommand.CancelAsync();
             return;
         }
 
         UndoRedoRecorder.Batch(description);
+        await runningCommand.BeginAsync();
         await executeTask();
-        runningCommand.IsCompleted = true;
+        await runningCommand.CompleteAsync();
     }
 }

@@ -41,18 +41,6 @@ public class PropertyChangeNotifierBase : IPropertyChangeNotifier, INotifyProper
         return true;
     }
 
-    protected ChangeScope<T> SetScope<T>(ref T field, T value, string? propertyName)
-    {
-        T oldValue = field;
-        field = value;
-        return new ChangeScope<T>(this, oldValue, value, propertyName);
-    }
-
-    protected void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        SetAsync(ref field, value, propertyName).CaptureThrow();
-    }
-
     protected ChangeScope<T> SetPropertyScope<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         T oldValue = field;
